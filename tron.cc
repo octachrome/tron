@@ -1,6 +1,7 @@
 #include <cstring>
 #include <vector>
 #include <iostream>
+#include <ctime>
 
 #define WIDTH  30
 #define HEIGHT 20
@@ -55,10 +56,7 @@ private:
 
 public:
     void findRegions(const State &state) {
-        memset(map, 0, WIDTH * HEIGHT * sizeof(Region*));
-        regions.clear();
-        regionCount = 0;
-        nextId = 1;
+        init();
 
         for (int x = 0; x <= MAX_X; x++) {
             Group* group = 0;
@@ -96,6 +94,20 @@ public:
     }
 
 private:
+    void init() {
+        for (vector<Region*>::iterator i = regions.begin(); i < regions.end(); ++i) {
+            for (vector<Group*>::iterator j = (*i)->groups.begin(); j < (*i)->groups.end(); ++j) {
+                delete *j;
+            }
+            delete *i;
+        }
+        regions.clear();
+
+        memset(map, 0, WIDTH * HEIGHT * sizeof(Region*));
+        regionCount = 0;
+        nextId = 1;
+    }
+
     Group* createGroupAndRegion() {
         Group* group = new Group();
         Region* region = new Region(nextId++);
@@ -125,6 +137,8 @@ private:
         newRegion->groups.insert(newRegion->groups.end(), oldRegion->groups.begin(), oldRegion->groups.end());
         newRegion->size += oldRegion->size;
 
+        oldRegion->groups.clear();
+
         // var idx = this._regions.indexOf(oldRegion);
         // this._regions.splice(idx, 1);
         regionCount--;
@@ -136,6 +150,7 @@ int thisPlayer;
 int x, y;
 
 State state;
+Regions regions;
 
 void readTurn() {
     cin >> totalPlayers;
@@ -160,11 +175,49 @@ void readTurn() {
     } 
 }
 
+int sizeOf(int x, int y) {
+    Region* region = regions.regionAt(x, y);
+    return region ? region->size : 0;
+}
+
+const char* dirs[] = {"RIGHT", "LEFT", "DOWN", "UP"};
+
+const char* findLargestRegion(int x, int y) {
+    int sizes[4];
+
+    sizes[0] = sizeOf(x + 1, y);
+    sizes[1] = sizeOf(x - 1, y);
+    sizes[2] = sizeOf(x, y + 1);
+    sizes[3] = sizeOf(x, y - 1);
+
+    int max = sizes[0];
+    int maxIdx = 0;
+    for (int i = 1; i < 4; i++) {
+        if (sizes[i] > max) {
+            max = sizes[i];
+            maxIdx = i;
+        }
+    }
+
+    return dirs[maxIdx];
+}
+
+#define CLOCKS_PER_MS (CLOCKS_PER_SEC / 1000)
+
 void run() {
     while (1) {
         readTurn();
-        // cerr << x << "," << y << endl;
-        cout << "LEFT" << endl;
+
+        clock_t start = clock();
+        int j;
+        for (j = 0; j < 5000; j++) {
+            regions.findRegions(state);
+        }
+        clock_t elapsed = clock() - start;
+        cerr << (elapsed / CLOCKS_PER_MS) << endl;
+        cerr << (elapsed / j / CLOCKS_PER_MS) << endl;
+
+        cout << findLargestRegion(x, y) << endl;
     }
 }
 
