@@ -10,9 +10,20 @@
 using namespace std;
 
 class State {
+private:
+    int grid[WIDTH][HEIGHT];
+
 public:
+    State() {
+        memset(grid, 0, WIDTH * HEIGHT * sizeof(int));
+    }
+
     bool occupied(int x, int y) const {
-        return false;
+        return grid[x][y] != 0;
+    }
+
+    void occupy(int x, int y, int value) {
+        grid[x][y] = value;
     }
 };
 
@@ -88,6 +99,7 @@ private:
     Group* createGroupAndRegion() {
         Group* group = new Group();
         Region* region = new Region(nextId++);
+        region->groups.push_back(group);
         group->region = region;
 
         regions.push_back(region);
@@ -107,7 +119,7 @@ private:
     }
 
     void combine(Region* oldRegion, Region* newRegion) {
-        for (vector<Group*>::iterator i = oldRegion->groups.begin(); i != oldRegion->groups.end(); i++) {
+        for (vector<Group*>::iterator i = oldRegion->groups.begin(); i != oldRegion->groups.end(); ++i) {
             (*i)->region = newRegion;
         }
         newRegion->groups.insert(newRegion->groups.end(), oldRegion->groups.begin(), oldRegion->groups.end());
@@ -119,8 +131,46 @@ private:
     }
 };
 
+int totalPlayers;
+int thisPlayer;
+int x, y;
+
+State state;
+
+void readTurn() {
+    cin >> totalPlayers;
+    cin >> thisPlayer;
+
+    for (int i = 0; i < totalPlayers; i++) {
+        int tailX;
+        int tailY;
+        int headX;
+        int headY;
+
+        cin >> tailX;
+        cin >> tailY;
+        cin >> headX;
+        cin >> headY;
+
+        state.occupy(headX, headY, 1);
+        if (i == thisPlayer) {
+            x = headX;
+            y = headY;
+        }
+    } 
+}
+
+void run() {
+    while (1) {
+        readTurn();
+        // cerr << x << "," << y << endl;
+        cout << "LEFT" << endl;
+    }
+}
+
 #ifndef TRON_TESTS
 int main() {
     run();
+    return 0;
 }
 #endif
