@@ -180,3 +180,44 @@ TEST(ScoreTest, ShouldScoreFourPlayersCorrectly) {
     ASSERT_EQ(400, scores.scores[2]) << "Player in 1st place should score 400";
     ASSERT_EQ(300, scores.scores[3]) << "Player in 2nd place should score 300";
 }
+
+Scores mockCalculateScores(Regions& regions, State& state, int turn, void* dummy) {
+    Scores scores;
+    if (state.players[0].x == 11) {
+        scores.scores[0] = 3;
+    } else if (state.players[0].x == 9) {
+        scores.scores[0] = 4;
+    } else if (state.players[0].y == 11) {
+        scores.scores[0] = 5;
+    } else if (state.players[0].y == 9) {
+        scores.scores[0] = 2;
+    }
+    return scores;
+}
+
+TEST(ScoreTest, MaximiseScore) {
+    State state;
+    state.numPlayers = 4;
+    state.thisPlayer = 0;
+    state.players[0].x = 10;
+    state.players[0].y = 10;
+
+    Regions regions;
+
+    Scores scores = maxScore(regions, state, 0, (void*) mockCalculateScores);
+    ASSERT_EQ(DOWN, scores.move);
+}
+
+TEST(ScoreTest, DISABLED_Minimax) {
+    State state;
+    state.numPlayers = 2;
+    state.thisPlayer = 0;
+    state.players[0].x = 10;
+    state.players[0].y = 10;
+    state.players[1].x = 20;
+    state.players[1].y = 20;
+
+    Regions regions;
+
+    Scores scores = maxScore(regions, state, 0, (void*) minimax);
+}

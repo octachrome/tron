@@ -12,6 +12,15 @@
 
 using namespace std;
 
+const char* RIGHT = "RIGHT";
+const char* LEFT = "LEFT";
+const char* DOWN = "DOWN";
+const char* UP = "UP";
+
+const char* const dirs[] = {RIGHT, LEFT, DOWN, UP};
+
+int maxDepth = 10;
+
 class Player {
 public:
     int x;
@@ -45,9 +54,13 @@ public:
 
     void occupy(int x, int y, int player) {
         players[player].x = x;
-        players[player].x = y;
+        players[player].y = y;
 
         grid[x][y] = 1;
+    }
+
+    void clear(int x, int y) {
+        grid[x][y] = 0;
     }
 
     int x() {
@@ -176,8 +189,10 @@ private:
     }
 };
 
-struct Scores {
+class Scores {
+public:
     int scores[4];
+    const char* move;
 };
 
 class Size {
@@ -213,6 +228,54 @@ Scores calculateScores(RegionsLike& regions, const State& state) {
     return scores;
 };
 
+const int xOffsets[] = {1, -1, 0, 0};
+const int yOffsets[] = {0, 0, 1, -1};
+
+typedef Scores (*ScoreCalculator)(Regions& regions, State& state, int turn, void* scoreCalculator);
+
+Scores maxScore(Regions& regions, State& state, int turn, void* sc) {
+    ScoreCalculator scoreCalculator = (ScoreCalculator) sc;
+
+    Scores bestScores;
+    int player = (state.thisPlayer + turn) % state.numPlayers;
+    bestScores.scores[player] = -1;
+
+    int origX = state.players[player].x;
+    int origY = state.players[player].y;
+
+    for (int i = 0; i < 4; i++) {
+        int x = origX + xOffsets[i];
+        int y = origY + yOffsets[i];
+        if (!state.occupied(x, y)) {
+            state.occupy(x, y, player);
+            Scores scores = scoreCalculator(regions, state, turn + 1, (void*) scoreCalculator);
+            state.clear(x, y);
+            state.occupy(origX, origY, player); // restore player position
+            scores.move = dirs[i];
+            if (scores.scores[player] > bestScores.scores[player]) {
+                bestScores = scores;
+            }
+        }
+    }
+
+    if (bestScores.scores[player] == -1) {
+        // All moves are illegal, so pass
+        Scores scores = maxScore(regions, state, turn + 1, (void*) scoreCalculator);
+        scores.move = 0;
+        return scores;
+    } else {
+        return bestScores;
+    }
+}
+
+Scores minimax(Regions& regions, State& state, int turn, void* sc) {
+    if (turn >= maxDepth) {
+        return calculateScores(regions, state);
+    } else {
+        return maxScore(regions, state, turn + 1, sc);
+    }
+}
+
 State state;
 Regions regions;
 
@@ -240,8 +303,6 @@ int sizeOf(int x, int y) {
     return region ? region->size : 0;
 }
 
-const char* dirs[] = {"RIGHT", "LEFT", "DOWN", "UP"};
-
 const char* findLargestRegion(int x, int y) {
     int sizes[4];
 
@@ -265,19 +326,17 @@ const char* findLargestRegion(int x, int y) {
 #define CLOCKS_PER_MS (CLOCKS_PER_SEC / 1000)
 
 void run() {
+    Scores scores;
+
     while (1) {
         readTurn();
 
         clock_t start = clock();
-        int j;
-        for (j = 0; j < 5000; j++) {
-            regions.findRegions(state);
-        }
+        scores = maxScore(regions, state, 0, (void*) minimax);
         clock_t elapsed = clock() - start;
         cerr << (elapsed / CLOCKS_PER_MS) << endl;
-        cerr << (elapsed / j / CLOCKS_PER_MS) << endl;
 
-        cout << findLargestRegion(state.x(), state.y()) << endl;
+        cout << scores.move << endl;
     }
 }
 
