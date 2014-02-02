@@ -2,19 +2,39 @@
 #include <vector>
 #include <iostream>
 #include <ctime>
+#include <algorithm>
 
 #define WIDTH  30
 #define HEIGHT 20
 #define MAX_X  (WIDTH - 1)
 #define MAX_Y  (HEIGHT - 1)
+#define PLAYERS 4
 
 using namespace std;
+
+class Player {
+public:
+    int x;
+    int y;
+
+    Player() {}
+
+    Player(int p_x, int p_y) {
+        x = p_x;
+        y = p_y;
+    }
+};
 
 class State {
 private:
     int grid[WIDTH][HEIGHT];
 
 public:
+    int numPlayers;
+    int thisPlayer;
+
+    Player players[PLAYERS];
+
     State() {
         memset(grid, 0, WIDTH * HEIGHT * sizeof(int));
     }
@@ -23,8 +43,19 @@ public:
         return grid[x][y] != 0;
     }
 
-    void occupy(int x, int y, int value) {
-        grid[x][y] = value;
+    void occupy(int x, int y, int player) {
+        players[player].x = x;
+        players[player].x = y;
+
+        grid[x][y] = 1;
+    }
+
+    int x() {
+        return players[thisPlayer].x;
+    }
+
+    int y() {
+        return players[thisPlayer].y;
     }
 };
 
@@ -145,18 +176,51 @@ private:
     }
 };
 
-int totalPlayers;
-int thisPlayer;
-int x, y;
+struct Scores {
+    int scores[4];
+};
+
+class Size {
+public:
+    int player;
+    int size;
+
+    Size(int p_player, int p_size) {
+        player = p_player;
+        size = p_size;
+    }
+};
+
+bool compareSizes(const Size& size1, const Size& size2) {
+    return size1.size < size2.size;
+}
+
+template<class RegionsLike>
+Scores calculateScores(RegionsLike& regions, const State& state) {
+    Scores scores;
+    vector<Size> sizes;
+
+    regions.findRegions(state);
+    for (int i = 0; i < state.numPlayers; i++) {
+        Region *region = regions.regionAt(state.players[i].x, state.players[i].y);
+        sizes.push_back(Size(i, region->size));
+    }
+    sort(sizes.begin(), sizes.end(), compareSizes);
+    for (int i = 0; i < state.numPlayers; i++) {
+        int player = sizes[i].player;
+        scores.scores[player] = (i + 1) * 100;
+    }
+    return scores;
+};
 
 State state;
 Regions regions;
 
 void readTurn() {
-    cin >> totalPlayers;
-    cin >> thisPlayer;
+    cin >> state.numPlayers;
+    cin >> state.thisPlayer;
 
-    for (int i = 0; i < totalPlayers; i++) {
+    for (int i = 0; i < state.numPlayers; i++) {
         int tailX;
         int tailY;
         int headX;
@@ -167,11 +231,7 @@ void readTurn() {
         cin >> headX;
         cin >> headY;
 
-        state.occupy(headX, headY, 1);
-        if (i == thisPlayer) {
-            x = headX;
-            y = headY;
-        }
+        state.occupy(headX, headY, i);
     } 
 }
 
@@ -217,7 +277,7 @@ void run() {
         cerr << (elapsed / CLOCKS_PER_MS) << endl;
         cerr << (elapsed / j / CLOCKS_PER_MS) << endl;
 
-        cout << findLargestRegion(x, y) << endl;
+        cout << findLargestRegion(state.x(), state.y()) << endl;
     }
 }
 

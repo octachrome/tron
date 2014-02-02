@@ -137,3 +137,46 @@ TEST(RegionTest, DivideGridIntoCheckerboard) {
     Region* region1 = regions.regionAt(1, 0);
     ASSERT_EQ(1, region1->size);
 }
+
+class MockRegions {
+private:
+    Region* regions[MAX_X][MAX_Y];
+
+public:
+    MockRegions() {
+        memset(regions, 0, MAX_X * MAX_Y * sizeof(Region*));
+    }
+
+    void mockRegionAt(int x, int y, int size) {
+        Region* region = new Region(1);
+        region->size = size;
+        regions[x][y] = region;
+    }
+
+    void findRegions(const State& state) {}
+
+    Region* regionAt(int x, int y) const {
+        return regions[x][y];
+    }
+};
+
+TEST(ScoreTest, ShouldScoreFourPlayersCorrectly) {
+    State state;
+    state.players[0] = Player(1, 1);
+    state.players[1] = Player(2, 2);
+    state.players[2] = Player(3, 3);
+    state.players[3] = Player(4, 4);
+    state.numPlayers = 4;
+
+    MockRegions regions;
+    regions.mockRegionAt(1, 1, 4);
+    regions.mockRegionAt(2, 2, 5);
+    regions.mockRegionAt(3, 3, 7);
+    regions.mockRegionAt(4, 4, 6);
+
+    Scores scores = calculateScores(regions, state);
+    ASSERT_EQ(100, scores.scores[0]) << "Player in 4th place should score 100";
+    ASSERT_EQ(200, scores.scores[1]) << "Player in 3rd place should score 200";
+    ASSERT_EQ(400, scores.scores[2]) << "Player in 1st place should score 400";
+    ASSERT_EQ(300, scores.scores[3]) << "Player in 2nd place should score 300";
+}
