@@ -210,16 +210,33 @@ bool compareSizes(const Size& size1, const Size& size2) {
     return size1.size < size2.size;
 }
 
+const int xOffsets[] = {1, -1, 0, 0};
+const int yOffsets[] = {0, 0, 1, -1};
+
+template<class RegionsLike>
+void calculateSizes(RegionsLike& regions, const State& state, vector<Size>& sizes) {
+    for (int i = 0; i < state.numPlayers; i++) {
+        int x = state.players[i].x;
+        int y = state.players[i].y;
+        int maxSize = 0;
+        for (int j = 0; j < 4; j++) {
+            Region *region = regions.regionAt(x + xOffsets[j], y + yOffsets[j]);
+            if (region != 0 && region->size > maxSize) {
+                maxSize = region->size;
+            }
+        }
+        sizes.push_back(Size(i, maxSize));
+    }
+}
+
 template<class RegionsLike>
 Scores calculateScores(RegionsLike& regions, const State& state) {
     Scores scores;
     vector<Size> sizes;
 
     regions.findRegions(state);
-    for (int i = 0; i < state.numPlayers; i++) {
-        Region *region = regions.regionAt(state.players[i].x, state.players[i].y);
-        sizes.push_back(Size(i, region->size));
-    }
+    calculateSizes(regions, state, sizes);
+
     sort(sizes.begin(), sizes.end(), compareSizes);
     for (int i = 0; i < state.numPlayers; i++) {
         int player = sizes[i].player;
@@ -227,9 +244,6 @@ Scores calculateScores(RegionsLike& regions, const State& state) {
     }
     return scores;
 };
-
-const int xOffsets[] = {1, -1, 0, 0};
-const int yOffsets[] = {0, 0, 1, -1};
 
 typedef Scores (*ScoreCalculator)(Regions& regions, State& state, int turn, void* scoreCalculator);
 

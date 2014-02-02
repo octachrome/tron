@@ -163,22 +163,40 @@ public:
 TEST(ScoreTest, ShouldScoreFourPlayersCorrectly) {
     State state;
     state.players[0] = Player(1, 1);
-    state.players[1] = Player(2, 2);
-    state.players[2] = Player(3, 3);
-    state.players[3] = Player(4, 4);
+    state.players[1] = Player(3, 3);
+    state.players[2] = Player(5, 5);
+    state.players[3] = Player(7, 7);
     state.numPlayers = 4;
 
     MockRegions regions;
-    regions.mockRegionAt(1, 1, 4);
-    regions.mockRegionAt(2, 2, 5);
-    regions.mockRegionAt(3, 3, 7);
-    regions.mockRegionAt(4, 4, 6);
+    regions.mockRegionAt(0, 1, 4);
+    regions.mockRegionAt(4, 3, 5);
+    regions.mockRegionAt(5, 6, 7);
+    regions.mockRegionAt(7, 6, 6);
 
     Scores scores = calculateScores(regions, state);
     ASSERT_EQ(100, scores.scores[0]) << "Player in 4th place should score 100";
     ASSERT_EQ(200, scores.scores[1]) << "Player in 3rd place should score 200";
     ASSERT_EQ(400, scores.scores[2]) << "Player in 1st place should score 400";
     ASSERT_EQ(300, scores.scores[3]) << "Player in 2nd place should score 300";
+}
+
+TEST(ScoreTest, ShouldScoreLargestAdjacentRegion) {
+    State state;
+    state.numPlayers = 1;
+
+    for (int x = 0; x <= MAX_X; x++) {
+        state.occupy(x, 10, 0);
+    }
+    // Our player is at the intercection of two regions
+    state.occupy(10, 10, 0);
+
+    Regions regions;
+    regions.findRegions(state);
+
+    vector<Size> sizes;
+    calculateSizes(regions, state, sizes);
+    ASSERT_EQ(WIDTH * 10, sizes[0].size) << "Should return size of largest region";
 }
 
 Scores mockCalculateScores(Regions& regions, State& state, int turn, void* dummy) {
@@ -208,7 +226,7 @@ TEST(ScoreTest, MaximiseScore) {
     ASSERT_EQ(DOWN, scores.move);
 }
 
-TEST(ScoreTest, DISABLED_Minimax) {
+TEST(ScoreTest, Minimax) {
     State state;
     state.numPlayers = 2;
     state.thisPlayer = 0;
