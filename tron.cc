@@ -19,8 +19,6 @@ const char* UP = "UP";
 
 const char* const dirs[] = {RIGHT, LEFT, DOWN, UP};
 
-int maxDepth = 10;
-
 class Player {
 public:
     int x;
@@ -41,14 +39,19 @@ private:
 public:
     int numPlayers;
     int thisPlayer;
+    int maxDepth;
 
     Player players[PLAYERS];
 
     State() {
         memset(grid, 0, WIDTH * HEIGHT * sizeof(int));
+        maxDepth = 10;
     }
 
     bool occupied(int x, int y) const {
+        if (x < 0 || y < 0 || x > MAX_X || y > MAX_Y) {
+            return true;
+        }
         return grid[x][y] != 0;
     }
 
@@ -229,6 +232,8 @@ void calculateSizes(RegionsLike& regions, const State& state, vector<Size>& size
     }
 }
 
+// TODO: adjust region sizes depending on whether they contain another player
+// TODO: adjust region sizes for subregions which can be entered but not left
 template<class RegionsLike>
 Scores calculateScores(RegionsLike& regions, const State& state) {
     Scores scores;
@@ -274,7 +279,7 @@ Scores maxScore(Regions& regions, State& state, int turn, void* sc) {
 
     if (bestScores.scores[player] == -1) {
         // All moves are illegal, so pass
-        Scores scores = maxScore(regions, state, turn + 1, (void*) scoreCalculator);
+        Scores scores = scoreCalculator(regions, state, turn + 1, (void*) scoreCalculator);
         scores.move = 0;
         return scores;
     } else {
@@ -283,7 +288,7 @@ Scores maxScore(Regions& regions, State& state, int turn, void* sc) {
 }
 
 Scores minimax(Regions& regions, State& state, int turn, void* sc) {
-    if (turn >= maxDepth) {
+    if (turn >= state.maxDepth) {
         return calculateScores(regions, state);
     } else {
         return maxScore(regions, state, turn + 1, sc);
@@ -344,6 +349,10 @@ void run() {
 
     while (1) {
         readTurn();
+
+        for (int i = 0; i < state.numPlayers; i++) {
+            cerr << state.players[i].x << "," << state.players[i].y << endl;
+        }
 
         clock_t start = clock();
         scores = maxScore(regions, state, 0, (void*) minimax);

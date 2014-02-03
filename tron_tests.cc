@@ -226,7 +226,7 @@ TEST(ScoreTest, MaximiseScore) {
     ASSERT_EQ(DOWN, scores.move);
 }
 
-TEST(ScoreTest, Minimax) {
+TEST(Minimax, Minimax) {
     State state;
     state.numPlayers = 2;
     state.thisPlayer = 0;
@@ -238,4 +238,34 @@ TEST(ScoreTest, Minimax) {
     Regions regions;
 
     Scores scores = maxScore(regions, state, 0, (void*) minimax);
+}
+
+void simulateMove(State& state, int player, const char* move) {
+    Player p = state.players[player];
+    if (move == LEFT) {
+        state.occupy(p.x - 1, p.y, player);
+    } else if (move == RIGHT) {
+        state.occupy(p.x + 1, p.y, player);
+    } else if (move == UP) {
+        state.occupy(p.x, p.y - 1, player);
+    } else if (move == DOWN) {
+        state.occupy(p.x, p.y + 1, player);
+    }
+}
+
+TEST(Minimax, RunLotsOfMoves) {
+    State state;
+    state.numPlayers = 2;
+
+    state.occupy(18, 10, 0);
+    state.occupy(9, 10, 1);
+
+    Scores scores;
+    Regions regions;
+
+    for (int i = 0; i < 100; i++) {
+        state.thisPlayer = i % 2;
+        scores = maxScore(regions, state, 0, (void*) minimax);
+        simulateMove(state, state.thisPlayer, scores.move);
+    }
 }
