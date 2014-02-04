@@ -195,6 +195,7 @@ private:
 class Scores {
 public:
     int scores[4];
+    int sizes[4];
     const char* move;
 };
 
@@ -210,7 +211,7 @@ public:
 };
 
 bool compareSizes(const Size& size1, const Size& size2) {
-    return size1.size < size2.size;
+    return size1.size > size2.size;
 }
 
 const int xOffsets[] = {1, -1, 0, 0};
@@ -243,9 +244,12 @@ Scores calculateScores(RegionsLike& regions, const State& state) {
     calculateSizes(regions, state, sizes);
 
     sort(sizes.begin(), sizes.end(), compareSizes);
+    int leaderSize = sizes[0].size;
+
     for (int i = 0; i < state.numPlayers; i++) {
         int player = sizes[i].player;
-        scores.scores[player] = (i + 1) * 100;
+        scores.scores[player] = sizes[i].size - leaderSize;
+        scores.sizes[player] = sizes[i].size;
     }
     return scores;
 };
