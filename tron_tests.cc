@@ -141,15 +141,18 @@ TEST(RegionTest, DivideGridIntoCheckerboard) {
 class MockRegions {
 private:
     Region* regions[MAX_X][MAX_Y];
+    int next;
 
 public:
     MockRegions() {
         memset(regions, 0, MAX_X * MAX_Y * sizeof(Region*));
+        next = 1;
     }
 
     void mockRegionAt(int x, int y, int size) {
         Region* region = new Region(1);
         region->size = size;
+        region->id = next++;
         regions[x][y] = region;
     }
 
@@ -197,6 +200,24 @@ TEST(ScoreTest, ShouldScoreLargestAdjacentRegion) {
     vector<Size> sizes;
     calculateSizes(regions, state, sizes);
     ASSERT_EQ(WIDTH * 10, sizes[0].size) << "Should return size of largest region";
+}
+
+TEST(ScoreTest, ShouldReduceScoreWhenRegionIsShared) {
+    State state;
+    state.players[0] = Player(1, 1);
+    state.players[1] = Player(1, 3);
+    state.numPlayers = 2;
+
+    MockRegions regions;
+    // this region is adjacent to both players
+    regions.mockRegionAt(1, 2, 20);
+    // this region is smaller, but only accessible to one player
+    regions.mockRegionAt(1, 4, 11);
+
+    vector<Size> sizes;
+    calculateSizes(regions, state, sizes);
+    ASSERT_EQ(10, sizes[0].size) << "Size of shared region should be halved";
+    ASSERT_EQ(11, sizes[1].size) << "Player 1 should pick the smaller region, because its size is not halved";
 }
 
 Scores mockCalculateScores(Regions& regions, State& state, int turn, void* dummy) {

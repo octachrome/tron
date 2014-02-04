@@ -1,5 +1,6 @@
 #include <cstring>
 #include <vector>
+#include <map>
 #include <iostream>
 #include <ctime>
 #include <algorithm>
@@ -219,21 +220,40 @@ const int yOffsets[] = {0, 0, 1, -1};
 
 template<class RegionsLike>
 void calculateSizes(RegionsLike& regions, const State& state, vector<Size>& sizes) {
+    map<int, int> occupants;
+
+    for (int i = 0; i < state.numPlayers; i++) {
+        int x = state.players[i].x;
+        int y = state.players[i].y;
+        for (int j = 0; j < 4; j++) {
+            Region *region = regions.regionAt(x + xOffsets[j], y + yOffsets[j]);
+            if (region != 0) {
+                if (occupants.find(region->id) == occupants.end()) {
+                    occupants[region->id] = 1;
+                } else {
+                    occupants[region->id]++;
+                }
+            }
+        }
+    }
+
     for (int i = 0; i < state.numPlayers; i++) {
         int x = state.players[i].x;
         int y = state.players[i].y;
         int maxSize = 0;
         for (int j = 0; j < 4; j++) {
             Region *region = regions.regionAt(x + xOffsets[j], y + yOffsets[j]);
-            if (region != 0 && region->size > maxSize) {
-                maxSize = region->size;
+            if (region != 0) {
+                int size = region->size / occupants[region->id];
+                if (size > maxSize) {
+                    maxSize = size;
+                }
             }
         }
         sizes.push_back(Size(i, maxSize));
     }
 }
 
-// TODO: adjust region sizes depending on whether they contain another player
 // TODO: adjust region sizes for subregions which can be entered but not left
 template<class RegionsLike>
 Scores calculateScores(RegionsLike& regions, const State& state) {
