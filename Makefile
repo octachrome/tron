@@ -8,8 +8,16 @@ tron_tests: tron_tests.o gtest_main.a
 
 tron_tests.o : tron.cc
 
+profile: tron_prof
+	./tron_prof
+
+tron_prof: tron_prof.cc tron.cc
+	g++ -g -pg -o $@ tron_prof.cc -lpthread -DTRON_PROF
+	./tron_prof
+	gprof tron_prof > tron_prof.out
+
 clean:
-	-rm *.o *.a *_tests
+	-rm *.o *.a *_tests prof
 
 GTEST_DIR = /home/chris/code/gtest-1.6.0
 

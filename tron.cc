@@ -132,11 +132,11 @@ public:
         }
     }
 
-    int count() const {
+    inline int count() const {
         return regionCount;
     }
 
-    Region* regionAt(int x, int y) const {
+    inline Region* regionAt(int x, int y) const {
         Group* group = groupAt(x, y);
         return group ? group->region : 0;
     }
@@ -156,7 +156,7 @@ private:
         nextId = 1;
     }
 
-    Group* createGroupAndRegion() {
+    inline Group* createGroupAndRegion() {
         Group* group = new Group();
         Region* region = new Region(nextId++);
         region->groups.push_back(group);
@@ -167,14 +167,14 @@ private:
         return group;
     }
 
-    Group* groupAt(int x, int y) const {
+    inline Group* groupAt(int x, int y) const {
         if (x < 0 || y < 0 || x > MAX_X || y > MAX_Y) {
             return 0;
         }
         return map[x][y];
     }
 
-    void setGroupAt(int x, int y, Group* group) {
+    inline void setGroupAt(int x, int y, Group* group) {
         map[x][y] = group;
     }
 
@@ -387,7 +387,7 @@ void run() {
     }
 }
 
-#ifndef TRON_TESTS
+#if !defined(TRON_TESTS) && !defined(TRON_PROF)
 int main() {
     run();
     return 0;

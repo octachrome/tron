@@ -1,3 +1,5 @@
 *.o
 *.a
 *_tests
+*.out
+tron_prof
