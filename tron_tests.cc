@@ -472,3 +472,26 @@ TEST(Scoring, ThreeWayBonus) {
     ASSERT_EQ(199 - 500, scores.scores[1]);
     ASSERT_EQ(269 + 1000, scores.scores[2]);
 }
+
+TEST(Scoring, Dead) {
+    State state;
+    state.numPlayers = 2;
+
+    // Player 0 is in the centre of a 3x3 block
+    for (int x = 0; x < 3; x++) {
+        for (int y = 0; y < 3; y++) {
+            state.occupy(x, y, 0);
+        }
+    }
+    state.occupy(1, 1, 0);
+
+    state.occupy(MAX_X, MAX_Y, 1);
+
+    Voronoi voronoi;
+    voronoi.calculate(state);
+
+    Scores scores = calculateScores(voronoi, state);
+
+    ASSERT_EQ(-1000, scores.scores[0]);
+    ASSERT_EQ(WIDTH * HEIGHT - 10 + 1000, scores.scores[1]);
+}

@@ -5,6 +5,7 @@
 #include <iomanip>
 #include <ctime>
 #include <algorithm>
+#include <climits>
 
 #define WIDTH  30
 #define HEIGHT 20
@@ -425,7 +426,7 @@ Scores maxScore(Regions& regions, State& state, int turn, void* sc) {
 
     Scores bestScores;
     int player = (state.thisPlayer + turn) % state.numPlayers;
-    bestScores.scores[player] = -1;
+    bestScores.scores[player] = -INT_MIN;
 
     int origX = state.players[player].x;
     int origY = state.players[player].y;
@@ -445,7 +446,7 @@ Scores maxScore(Regions& regions, State& state, int turn, void* sc) {
         }
     }
 
-    if (bestScores.scores[player] == -1) {
+    if (bestScores.scores[player] == -INT_MIN) {
         // All moves are illegal, so pass
         Scores scores = scoreCalculator(regions, state, turn + 1, (void*) scoreCalculator);
         scores.move = 0;
