@@ -79,6 +79,25 @@ public:
     int y() {
         return players[thisPlayer].y;
     }
+
+    void readTurn() {
+        cin >> numPlayers;
+        cin >> thisPlayer;
+
+        for (int i = 0; i < numPlayers; i++) {
+            int tailX;
+            int tailY;
+            int headX;
+            int headY;
+
+            cin >> tailX;
+            cin >> tailY;
+            cin >> headX;
+            cin >> headY;
+
+            occupy(headX, headY, i);
+        } 
+    }
 };
 
 class Region;
@@ -419,14 +438,16 @@ Scores calculateScores(Voronoi& voronoi, const State& state) {
     return scores;
 }
 
-typedef Scores (*ScoreCalculator)(Regions& regions, State& state, int turn, void* scoreCalculator);
+typedef Scores (*ScoreCalculator)(State& state, int turn, void* scoreCalculator, void* data);
 
-Scores maxScore(Regions& regions, State& state, int turn, void* sc) {
+Regions regions;
+
+Scores maxScore(State& state, int turn, void* sc, void* data) {
     ScoreCalculator scoreCalculator = (ScoreCalculator) sc;
 
     Scores bestScores;
     int player = (state.thisPlayer + turn) % state.numPlayers;
-    bestScores.scores[player] = -INT_MIN;
+    bestScores.scores[player] = INT_MIN;
 
     int origX = state.players[player].x;
     int origY = state.players[player].y;
@@ -436,7 +457,7 @@ Scores maxScore(Regions& regions, State& state, int turn, void* sc) {
         int y = origY + yOffsets[i];
         if (!state.occupied(x, y)) {
             state.occupy(x, y, player);
-            Scores scores = scoreCalculator(regions, state, turn + 1, (void*) scoreCalculator);
+            Scores scores = scoreCalculator(state, turn + 1, (void*) scoreCalculator, data);
             state.clear(x, y);
             state.occupy(origX, origY, player); // restore player position
             scores.move = dirs[i];
@@ -446,9 +467,9 @@ Scores maxScore(Regions& regions, State& state, int turn, void* sc) {
         }
     }
 
-    if (bestScores.scores[player] == -INT_MIN) {
+    if (bestScores.scores[player] == INT_MIN) {
         // All moves are illegal, so pass
-        Scores scores = scoreCalculator(regions, state, turn + 1, (void*) scoreCalculator);
+        Scores scores = scoreCalculator(state, turn + 1, (void*) scoreCalculator, data);
         scores.move = 0;
         return scores;
     } else {
@@ -456,34 +477,12 @@ Scores maxScore(Regions& regions, State& state, int turn, void* sc) {
     }
 }
 
-Scores minimax(Regions& regions, State& state, int turn, void* sc) {
+Scores minimax(State& state, int turn, void* sc, void* data) {
     if (turn >= state.maxDepth) {
-        return calculateScores(regions, state);
+        return calculateScores(*((Regions*)data), state);
     } else {
-        return maxScore(regions, state, turn + 1, sc);
+        return maxScore(state, turn + 1, sc, data);
     }
-}
-
-State state;
-Regions regions;
-
-void readTurn() {
-    cin >> state.numPlayers;
-    cin >> state.thisPlayer;
-
-    for (int i = 0; i < state.numPlayers; i++) {
-        int tailX;
-        int tailY;
-        int headX;
-        int headY;
-
-        cin >> tailX;
-        cin >> tailY;
-        cin >> headX;
-        cin >> headY;
-
-        state.occupy(headX, headY, i);
-    } 
 }
 
 int sizeOf(int x, int y) {
@@ -514,17 +513,18 @@ const char* findLargestRegion(int x, int y) {
 #define CLOCKS_PER_MS (CLOCKS_PER_SEC / 1000)
 
 void run() {
+    State state;
     Scores scores;
 
     while (1) {
-        readTurn();
+        state.readTurn();
 
         for (int i = 0; i < state.numPlayers; i++) {
             cerr << state.players[i].x << "," << state.players[i].y << endl;
         }
 
         clock_t start = clock();
-        scores = maxScore(regions, state, 0, (void*) minimax);
+        scores = maxScore(state, 0, (void*) minimax, &regions);
         clock_t elapsed = clock() - start;
         cerr << (elapsed / CLOCKS_PER_MS) << endl;
 

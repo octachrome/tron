@@ -220,7 +220,7 @@ TEST(Scoring, ShouldReduceScoreWhenRegionIsShared) {
     ASSERT_EQ(11, sizes[1].size) << "Player 1 should pick the smaller region, because its size is not halved";
 }
 
-Scores mockCalculateScores(Regions& regions, State& state, int turn, void* dummy) {
+Scores mockCalculateScores(State& state, int turn, void* dummy, void* data) {
     Scores scores;
     if (state.players[0].x == 11) {
         scores.scores[0] = 3;
@@ -243,7 +243,7 @@ TEST(Scoring, MaximiseScore) {
 
     Regions regions;
 
-    Scores scores = maxScore(regions, state, 0, (void*) mockCalculateScores);
+    Scores scores = maxScore(state, 0, (void*) mockCalculateScores, &regions);
     ASSERT_EQ(DOWN, scores.move);
 }
 
@@ -258,7 +258,7 @@ TEST(Minimax, Minimax) {
 
     Regions regions;
 
-    Scores scores = maxScore(regions, state, 0, (void*) minimax);
+    maxScore(state, 0, (void*) minimax, &regions);
 }
 
 void simulateMove(State& state, int player, const char* move) {
@@ -307,22 +307,22 @@ TEST(Minimax, DISABLED_RunLotsOfMoves) {
     Regions regions;
 
     for (int i = 0; i < 189; i++) {
-        printState(state);
+        // printState(state);
 
         state.thisPlayer = i % 2;
         if (i == 188) {
             state.maxDepth = 1;
         }
-        scores = maxScore(regions, state, 0, (void*) minimax);
+        scores = maxScore(state, 0, (void*) minimax, &regions);
 
-        cout << state.thisPlayer << " " << scores.move << endl;
+        // cout << state.thisPlayer << " " << scores.move << endl;
 
         //cout << state.players[0].x << "," <<  state.players[0].y << ": " << scores.sizes[0] << "," << scores.scores[0] << endl;
         //cout << state.players[1].x << "," <<  state.players[1].y << ": " << scores.sizes[1] << "," << scores.scores[1] << endl;
 
         simulateMove(state, state.thisPlayer, scores.move);
 
-        cout << endl;
+        // cout << endl;
     }
 }
 
