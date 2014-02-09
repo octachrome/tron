@@ -2,7 +2,7 @@
 
 #include "gtest/gtest.h"
 
-TEST(RegionTest, ShouldFindSingleRegionWhenUnoccupied) {
+TEST(Regions, ShouldFindSingleRegionWhenUnoccupied) {
     State state;
     Regions regions;
     regions.findRegions(state);
@@ -16,7 +16,7 @@ TEST(RegionTest, ShouldFindSingleRegionWhenUnoccupied) {
     ASSERT_EQ(WIDTH * HEIGHT, region1->size) << "Expected region to cover whole grid";
 }
 
-TEST(RegionTest, ShouldFindTwoRegionsWhenDividedHorizontally) {
+TEST(Regions, ShouldFindTwoRegionsWhenDividedHorizontally) {
     State state;
     for (int x = 0; x <= MAX_X; x++) {
         state.occupy(x, 10, 1);
@@ -34,7 +34,7 @@ TEST(RegionTest, ShouldFindTwoRegionsWhenDividedHorizontally) {
     ASSERT_EQ(WIDTH * (HEIGHT - 11), region2->size) << "Expected region2 to cover bottom half of grid";
 }
 
-TEST(RegionTest, ShouldFindOneRegionWhenDividedHorizontallyWithAHole) {
+TEST(Regions, ShouldFindOneRegionWhenDividedHorizontallyWithAHole) {
     State state;
     for (int x = 0; x <= MAX_X; x++) {
         if (x != 15) {
@@ -47,7 +47,7 @@ TEST(RegionTest, ShouldFindOneRegionWhenDividedHorizontallyWithAHole) {
     ASSERT_EQ(1, regions.count()) << "Expected one region";
 }
 
-TEST(RegionTest, ShouldFindOneRegionWhenDividedHorizontallyWithAHoleAndTopWallIsJagged) {
+TEST(Regions, ShouldFindOneRegionWhenDividedHorizontallyWithAHoleAndTopWallIsJagged) {
     State state;
     for (int x = 0; x <= MAX_X; x++) {
         if (x != 15) {
@@ -63,7 +63,7 @@ TEST(RegionTest, ShouldFindOneRegionWhenDividedHorizontallyWithAHoleAndTopWallIs
     ASSERT_EQ(1, regions.count()) << "Expected one region";
 }
 
-TEST(RegionTest, ShouldFindTwoRegionsWhenDividedVertically) {
+TEST(Regions, ShouldFindTwoRegionsWhenDividedVertically) {
     State state;
     for (int y = 0; y <= MAX_Y; y++) {
         state.occupy(10, y, 1);
@@ -74,7 +74,7 @@ TEST(RegionTest, ShouldFindTwoRegionsWhenDividedVertically) {
     ASSERT_EQ(2, regions.count()) << "Expected two regions";
 }
 
-TEST(RegionTest, ShouldFindTwoRegionsWhenDividedVerticallyWithAHole) {
+TEST(Regions, ShouldFindTwoRegionsWhenDividedVerticallyWithAHole) {
     State state;
     for (int y = 0; y <= MAX_Y; y++) {
         if (y != 10) {
@@ -87,7 +87,7 @@ TEST(RegionTest, ShouldFindTwoRegionsWhenDividedVerticallyWithAHole) {
     ASSERT_EQ(1, regions.count()) << "Expected one region";
 }
 
-TEST(RegionTest, ShouldFindFourRegionsWhenDividedIntoQuarters) {
+TEST(Regions, ShouldFindFourRegionsWhenDividedIntoQuarters) {
     State state;
     for (int x = 0; x <= MAX_X; x++) {
         state.occupy(x, 10, 1);
@@ -119,7 +119,7 @@ TEST(RegionTest, ShouldFindFourRegionsWhenDividedIntoQuarters) {
     ASSERT_EQ((HEIGHT - 11) * (WIDTH - 11), region4->size);
 }
 
-TEST(RegionTest, DivideGridIntoCheckerboard) {
+TEST(Regions, DivideGridIntoCheckerboard) {
     State state;
     for (int x = 0; x <= MAX_X; x++) {
         for (int y = 0; y <= MAX_Y; y++) {
@@ -163,7 +163,7 @@ public:
     }
 };
 
-TEST(ScoreTest, ShouldScoreFourPlayersCorrectly) {
+TEST(Scoring, ShouldScoreFourPlayersCorrectly) {
     State state;
     state.players[0] = Player(1, 1);
     state.players[1] = Player(3, 3);
@@ -184,7 +184,7 @@ TEST(ScoreTest, ShouldScoreFourPlayersCorrectly) {
     ASSERT_EQ(66 - 75, scores.scores[3]) << "Player in 2nd place should have correct score";
 }
 
-TEST(ScoreTest, ShouldScoreLargestAdjacentRegion) {
+TEST(Scoring, ShouldScoreLargestAdjacentRegion) {
     State state;
     state.numPlayers = 1;
 
@@ -202,7 +202,7 @@ TEST(ScoreTest, ShouldScoreLargestAdjacentRegion) {
     ASSERT_EQ(WIDTH * 10, sizes[0].size) << "Should return size of largest region";
 }
 
-TEST(ScoreTest, ShouldReduceScoreWhenRegionIsShared) {
+TEST(Scoring, ShouldReduceScoreWhenRegionIsShared) {
     State state;
     state.players[0] = Player(1, 1);
     state.players[1] = Player(1, 3);
@@ -234,7 +234,7 @@ Scores mockCalculateScores(Regions& regions, State& state, int turn, void* dummy
     return scores;
 }
 
-TEST(ScoreTest, MaximiseScore) {
+TEST(Scoring, MaximiseScore) {
     State state;
     state.numPlayers = 4;
     state.thisPlayer = 0;
@@ -357,4 +357,34 @@ TEST(Voronoi, UnevenlyFilledBoard) {
 
     ASSERT_EQ(306, voronoi.playerRegionSize(0));
     ASSERT_EQ(243, voronoi.playerRegionSize(1));
+}
+
+TEST(Scoring, DISABLED_Timing) {
+    State state;
+    state.numPlayers = 2;
+    state.occupy(4, 4, 0);
+    for (int i = 2; i <= 27; i++) {
+        state.occupy(i, 12, 1);
+    }
+    state.occupy(27, 13, 1);
+    state.occupy(27, 14, 1);
+    state.occupy(27, 15, 1);
+    state.occupy(26, 15, 1);
+    state.occupy(25, 15, 1);
+
+    Voronoi voronoi;
+    clock_t start = clock();
+    for (int i = 0; i < 10000; i++) {
+        voronoi.calculate(state);
+    }
+    clock_t elapsed = clock() - start;
+    cerr << (elapsed / CLOCKS_PER_MS) << endl; // 470ms
+
+    Regions regions;
+    start = clock();
+    for (int i = 0; i < 10000; i++) {
+        regions.findRegions(state);
+    }
+    elapsed = clock() - start;
+    cerr << (elapsed / CLOCKS_PER_MS) << endl; // 170ms
 }
