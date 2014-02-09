@@ -243,11 +243,11 @@ TEST(Scoring, MaximiseScore) {
 
     Regions regions;
 
-    Scores scores = maxScore(state, 0, (void*) mockCalculateScores, &regions);
+    Scores scores = minimax(state, 0, (void*) mockCalculateScores, &regions);
     ASSERT_EQ(DOWN, scores.move);
 }
 
-TEST(Minimax, Minimax) {
+TEST(Minimax, Regions) {
     State state;
     state.numPlayers = 2;
     state.thisPlayer = 0;
@@ -258,7 +258,7 @@ TEST(Minimax, Minimax) {
 
     Regions regions;
 
-    maxScore(state, 0, (void*) minimax, &regions);
+    minimax(state, 0, (void*) regionsRecursive, &regions);
 }
 
 void simulateMove(State& state, int player, const char* move) {
@@ -313,7 +313,7 @@ TEST(Minimax, DISABLED_RunLotsOfMoves) {
         if (i == 188) {
             state.maxDepth = 1;
         }
-        scores = maxScore(state, 0, (void*) minimax, &regions);
+        scores = minimax(state, 0, (void*) regionsRecursive, &regions);
 
         // cout << state.thisPlayer << " " << scores.move << endl;
 
@@ -326,7 +326,7 @@ TEST(Minimax, DISABLED_RunLotsOfMoves) {
     }
 }
 
-TEST(Minimax, RunLotsOfMovesVoronoi) {
+TEST(Minimax, DISABLED_RunLotsOfMovesVoronoi) {
     State state;
     state.numPlayers = 2;
 
@@ -343,7 +343,7 @@ TEST(Minimax, RunLotsOfMovesVoronoi) {
         if (i == 188) {
             state.maxDepth = 1;
         }
-        scores = maxScore(state, 0, (void*) minimaxVoronoi, &voronoi);
+        scores = minimax(state, 0, (void*) voronoiRecursive, &voronoi);
 
         // cout << state.thisPlayer << " " << scores.move << endl;
 

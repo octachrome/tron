@@ -444,7 +444,7 @@ typedef Scores (*ScoreCalculator)(State& state, int turn, void* scoreCalculator,
 
 Regions regions;
 
-Scores maxScore(State& state, int turn, void* sc, void* data) {
+Scores minimax(State& state, int turn, void* sc, void* data) {
     ScoreCalculator scoreCalculator = (ScoreCalculator) sc;
 
     Scores bestScores;
@@ -479,19 +479,19 @@ Scores maxScore(State& state, int turn, void* sc, void* data) {
     }
 }
 
-Scores minimax(State& state, int turn, void* sc, void* data) {
+Scores regionsRecursive(State& state, int turn, void* sc, void* data) {
     if (turn >= state.maxDepth) {
         return calculateScores(*((Regions*)data), state);
     } else {
-        return maxScore(state, turn + 1, sc, data);
+        return minimax(state, turn + 1, sc, data);
     }
 }
 
-Scores minimaxVoronoi(State& state, int turn, void* sc, void* data) {
+Scores voronoiRecursive(State& state, int turn, void* sc, void* data) {
     if (turn >= state.maxDepth) {
         return calculateScores(*((Voronoi*)data), state);
     } else {
-        return maxScore(state, turn + 1, sc, data);
+        return minimax(state, turn + 1, sc, data);
     }
 }
 
@@ -534,7 +534,7 @@ void run() {
         }
 
         clock_t start = clock();
-        scores = maxScore(state, 0, (void*) minimax, &regions);
+        scores = minimax(state, 0, (void*) regionsRecursive, &regions);
         clock_t elapsed = clock() - start;
         cerr << (elapsed / CLOCKS_PER_MS) << endl;
 
