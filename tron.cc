@@ -250,11 +250,11 @@ private:
     }
 
 public:
-    void calculate(State& state) {
+    void calculate(const State& state) {
         clear();
 
         for (int i = 0; i < state.numPlayers; i++) {
-            Player* player = state.players + i;
+            const Player* player = state.players + i;
             grid[player->x][player->y].player = i;
             grid[player->x][player->y].distance = 0;
             addNode(player->x, player->y);
@@ -403,6 +403,8 @@ Scores calculateScores(Voronoi& voronoi, const State& state) {
     int maxSize = -1;
     Scores scores;
 
+    voronoi.calculate(state);
+
     for (int i = 0; i < state.numPlayers; i++) {
         occupants[i] = 0;
         totalSize[i] = 0;
@@ -480,6 +482,14 @@ Scores maxScore(State& state, int turn, void* sc, void* data) {
 Scores minimax(State& state, int turn, void* sc, void* data) {
     if (turn >= state.maxDepth) {
         return calculateScores(*((Regions*)data), state);
+    } else {
+        return maxScore(state, turn + 1, sc, data);
+    }
+}
+
+Scores minimaxVoronoi(State& state, int turn, void* sc, void* data) {
+    if (turn >= state.maxDepth) {
+        return calculateScores(*((Voronoi*)data), state);
     } else {
         return maxScore(state, turn + 1, sc, data);
     }

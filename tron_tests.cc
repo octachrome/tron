@@ -326,6 +326,36 @@ TEST(Minimax, DISABLED_RunLotsOfMoves) {
     }
 }
 
+TEST(Minimax, RunLotsOfMovesVoronoi) {
+    State state;
+    state.numPlayers = 2;
+
+    state.occupy(26, 18, 0);
+    state.occupy(16, 1, 1);
+
+    Scores scores;
+    Voronoi voronoi;
+
+    for (int i = 0; i < 189; i++) {
+        // printState(state);
+
+        state.thisPlayer = i % 2;
+        if (i == 188) {
+            state.maxDepth = 1;
+        }
+        scores = maxScore(state, 0, (void*) minimaxVoronoi, &voronoi);
+
+        // cout << state.thisPlayer << " " << scores.move << endl;
+
+        //cout << state.players[0].x << "," <<  state.players[0].y << ": " << scores.sizes[0] << "," << scores.scores[0] << endl;
+        //cout << state.players[1].x << "," <<  state.players[1].y << ": " << scores.sizes[1] << "," << scores.scores[1] << endl;
+
+        simulateMove(state, state.thisPlayer, scores.move);
+
+        // cout << endl;
+    }
+}
+
 TEST(Voronoi, EmptyBoardEqualRegions) {
     State state;
     state.numPlayers = 2;
@@ -423,7 +453,6 @@ TEST(Scoring, ConnectedRegionsScoreOnVoronoi) {
     state.occupy(25, 15, 1);
 
     Voronoi voronoi;
-    voronoi.calculate(state);
 
     Scores scores = calculateScores(voronoi, state);
     ASSERT_EQ(306, scores.scores[0]);
@@ -441,7 +470,6 @@ TEST(Scoring, DisconnectedRegionsScoreGetBonus) {
     state.occupy(MAX_X, MAX_Y, 1);
 
     Voronoi voronoi;
-    voronoi.calculate(state);
 
     Scores scores = calculateScores(voronoi, state);
 
@@ -464,7 +492,6 @@ TEST(Scoring, ThreeWayBonus) {
     state.occupy(MAX_X, MAX_Y, 2);
 
     Voronoi voronoi;
-    voronoi.calculate(state);
 
     Scores scores = calculateScores(voronoi, state);
 
@@ -488,7 +515,6 @@ TEST(Scoring, Dead) {
     state.occupy(MAX_X, MAX_Y, 1);
 
     Voronoi voronoi;
-    voronoi.calculate(state);
 
     Scores scores = calculateScores(voronoi, state);
 
