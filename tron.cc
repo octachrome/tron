@@ -326,6 +326,17 @@ public:
     const char* move;
 };
 
+class Bounds {
+public:
+    int bounds[PLAYERS];
+
+    Bounds() {
+        for (int i = 0; i < PLAYERS; i++) {
+            bounds[i] = INT_MIN;
+        }
+    }
+};
+
 class Size {
 public:
     int player;
@@ -440,11 +451,11 @@ Scores calculateScores(Voronoi& voronoi, const State& state) {
     return scores;
 }
 
-typedef Scores (*ScoreCalculator)(State& state, int turn, void* scoreCalculator, void* data);
+typedef Scores (*ScoreCalculator)(Bounds& bounds, State& state, int turn, void* scoreCalculator, void* data);
 
 Regions regions;
 
-Scores minimax(State& state, int turn, void* sc, void* data) {
+Scores minimax(Bounds& bounds, State& state, int turn, void* sc, void* data) {
     ScoreCalculator scoreCalculator = (ScoreCalculator) sc;
 
     Scores bestScores;
@@ -459,7 +470,7 @@ Scores minimax(State& state, int turn, void* sc, void* data) {
         int y = origY + yOffsets[i];
         if (!state.occupied(x, y)) {
             state.occupy(x, y, player);
-            Scores scores = scoreCalculator(state, turn + 1, (void*) scoreCalculator, data);
+            Scores scores = scoreCalculator(bounds, state, turn + 1, (void*) scoreCalculator, data);
             state.clear(x, y);
             state.occupy(origX, origY, player); // restore player position
             scores.move = dirs[i];
@@ -471,7 +482,7 @@ Scores minimax(State& state, int turn, void* sc, void* data) {
 
     if (bestScores.scores[player] == INT_MIN) {
         // All moves are illegal, so pass
-        Scores scores = scoreCalculator(state, turn + 1, (void*) scoreCalculator, data);
+        Scores scores = scoreCalculator(bounds, state, turn + 1, (void*) scoreCalculator, data);
         scores.move = 0;
         return scores;
     } else {
@@ -479,19 +490,19 @@ Scores minimax(State& state, int turn, void* sc, void* data) {
     }
 }
 
-Scores regionsRecursive(State& state, int turn, void* sc, void* data) {
+Scores regionsRecursive(Bounds& bounds, State& state, int turn, void* sc, void* data) {
     if (turn >= state.maxDepth) {
         return calculateScores(*((Regions*)data), state);
     } else {
-        return minimax(state, turn + 1, sc, data);
+        return minimax(bounds, state, turn + 1, sc, data);
     }
 }
 
-Scores voronoiRecursive(State& state, int turn, void* sc, void* data) {
+Scores voronoiRecursive(Bounds& bounds, State& state, int turn, void* sc, void* data) {
     if (turn >= state.maxDepth) {
         return calculateScores(*((Voronoi*)data), state);
     } else {
-        return minimax(state, turn + 1, sc, data);
+        return minimax(bounds, state, turn + 1, sc, data);
     }
 }
 
@@ -525,6 +536,7 @@ const char* findLargestRegion(int x, int y) {
 void run() {
     State state;
     Scores scores;
+    Bounds bounds;
 
     while (1) {
         state.readTurn();
@@ -534,7 +546,7 @@ void run() {
         }
 
         clock_t start = clock();
-        scores = minimax(state, 0, (void*) regionsRecursive, &regions);
+        scores = minimax(bounds, state, 0, (void*) regionsRecursive, &regions);
         clock_t elapsed = clock() - start;
         cerr << (elapsed / CLOCKS_PER_MS) << endl;
 
