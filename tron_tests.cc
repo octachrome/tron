@@ -338,3 +338,23 @@ TEST(Voronoi, EmptyBoardEqualRegions) {
     ASSERT_EQ(WIDTH * HEIGHT / 2 - 1, voronoi.playerRegionSize(0));
     ASSERT_EQ(WIDTH * HEIGHT / 2 - 1, voronoi.playerRegionSize(1));
 }
+
+TEST(Voronoi, UnevenlyFilledBoard) {
+    State state;
+    state.numPlayers = 2;
+    state.occupy(4, 4, 0);
+    for (int i = 2; i <= 27; i++) {
+        state.occupy(i, 12, 1);
+    }
+    state.occupy(27, 13, 1);
+    state.occupy(27, 14, 1);
+    state.occupy(27, 15, 1);
+    state.occupy(26, 15, 1);
+    state.occupy(25, 15, 1);
+
+    Voronoi voronoi;
+    voronoi.calculate(state);
+
+    ASSERT_EQ(306, voronoi.playerRegionSize(0));
+    ASSERT_EQ(243, voronoi.playerRegionSize(1));
+}

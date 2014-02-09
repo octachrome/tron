@@ -2,6 +2,7 @@
 #include <vector>
 #include <map>
 #include <iostream>
+#include <iomanip>
 #include <ctime>
 #include <algorithm>
 
@@ -212,7 +213,7 @@ class Voronoi {
 private:
     int sizes[PLAYERS];
     Vor grid[WIDTH][HEIGHT];
-    Coord openNodes[WIDTH * HEIGHT];
+    Coord openNodes[10000];
     int listEnd;
 
     void clear() {
@@ -242,6 +243,9 @@ public:
             int x = openNodes[i].x;
             int y = openNodes[i].y;
             Vor* vor = &grid[x][y];
+            if (vor->player == 254) {
+                continue;
+            }
 
             for (int j = 0; j < 4; j++) {
                 int xx = x + xOffsets[j];
@@ -269,6 +273,22 @@ public:
 
     int playerRegionSize(int player) {
         return sizes[player];
+    }
+
+    Vor& get(int x, int y) {
+        return grid[x][y];
+    }
+
+    void print() {
+        cout << hex;
+        for (int y = 0; y <= MAX_Y; y++) {
+            for (int x = 0; x <= MAX_X; x++) {
+                Vor vor = get(x, y);
+                cout << setw(3) << int(vor.player);
+            }
+            cout << endl;
+        }
+        cout << dec;
     }
 };
 
