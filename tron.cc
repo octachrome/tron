@@ -212,6 +212,7 @@ public:
 class Voronoi {
 private:
     int sizes[PLAYERS];
+    int regions[PLAYERS];
     Vor grid[WIDTH][HEIGHT];
     Coord openNodes[10000];
     int listEnd;
@@ -237,6 +238,7 @@ public:
             grid[player->x][player->y].player = i;
             grid[player->x][player->y].distance = 0;
             addNode(player->x, player->y);
+            regions[i] = i;
         }
 
         for (int i = 0; i < listEnd; i++) {
@@ -257,13 +259,14 @@ public:
                         neighbour->distance = vor->distance + 1;
                         addNode(xx, yy);
                         sizes[vor->player]++;
-                    } else if (neighbour->player != vor->player) {
+                    } else if (neighbour->player != vor->player && neighbour->player != 254) {
+                        // Join the regions
+                        regions[neighbour->player] = regions[vor->player];
+
                         if (neighbour->distance == vor->distance + 1) {
                             // This is a shared boundary: remove it from the other player's territory
-                            if (neighbour->player != 254) {
-                                sizes[neighbour->player]--;
-                                neighbour->player = 254;
-                            }
+                            sizes[neighbour->player]--;
+                            neighbour->player = 254;
                         }
                     }
                 }
@@ -289,6 +292,10 @@ public:
             cout << endl;
         }
         cout << dec;
+    }
+
+    int regionForPlayer(int player) {
+        return regions[player];
     }
 };
 
@@ -369,6 +376,47 @@ Scores calculateScores(RegionsLike& regions, const State& state) {
     }
     return scores;
 };
+
+Scores calculateScores(Voronoi& voronoi, const State& state) {
+    int occupants[PLAYERS];
+    int totalSize[PLAYERS];
+    int maxSize = -1;
+    Scores scores;
+
+    for (int i = 0; i < state.numPlayers; i++) {
+        occupants[i] = 0;
+        totalSize[i] = 0;
+    }
+    for (int i = 0; i < state.numPlayers; i++) {
+        scores.scores[i] = voronoi.playerRegionSize(i);
+
+        int region = voronoi.regionForPlayer(i);
+        occupants[region]++;
+        totalSize[region] += voronoi.playerRegionSize(i);
+
+        if (totalSize[region] > maxSize) {
+            maxSize = totalSize[region];
+        }
+    }
+    int bonus = -1;
+    for (int i = 0; i < state.numPlayers; i++) {
+        int region = voronoi.regionForPlayer(i);
+        if (occupants[region] == 1 && totalSize[i] == maxSize) {
+            // Bonus!
+            bonus = i;
+            break;
+        }
+    }
+    if (bonus >= 0) {
+        scores.scores[bonus] += 1000;
+        for (int i = 0; i < state.numPlayers; i++) {
+            if (i != bonus) {
+                scores.scores[i] -= 1000 / (state.numPlayers - 1);
+            }
+        }
+    }
+    return scores;
+}
 
 typedef Scores (*ScoreCalculator)(Regions& regions, State& state, int turn, void* scoreCalculator);
 

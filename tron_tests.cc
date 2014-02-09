@@ -337,6 +337,7 @@ TEST(Voronoi, EmptyBoardEqualRegions) {
 
     ASSERT_EQ(WIDTH * HEIGHT / 2 - 1, voronoi.playerRegionSize(0));
     ASSERT_EQ(WIDTH * HEIGHT / 2 - 1, voronoi.playerRegionSize(1));
+    ASSERT_TRUE(voronoi.regionForPlayer(0) == voronoi.regionForPlayer(1));
 }
 
 TEST(Voronoi, UnevenlyFilledBoard) {
@@ -387,4 +388,87 @@ TEST(Scoring, DISABLED_Timing) {
     }
     elapsed = clock() - start;
     cerr << (elapsed / CLOCKS_PER_MS) << endl; // 170ms
+}
+
+TEST(Voronoi, ShouldFindTwoRegionsWhenDividedHorizontally) {
+    State state;
+    state.numPlayers = 2;
+    for (int x = 0; x <= MAX_X; x++) {
+        state.occupy(x, 10, 1);
+    }
+
+    state.occupy(0, 0, 0);
+    state.occupy(MAX_X, MAX_Y, 1);
+
+    Voronoi voronoi;
+    voronoi.calculate(state);
+
+    ASSERT_FALSE(voronoi.regionForPlayer(0) == voronoi.regionForPlayer(1)) << "Expected separate regions";
+
+    ASSERT_EQ(WIDTH * 10 - 1, voronoi.playerRegionSize(0)) << "Expected region1 to cover top half of grid";
+    ASSERT_EQ(WIDTH * (HEIGHT - 11) - 1, voronoi.playerRegionSize(1)) << "Expected region2 to cover bottom half of grid";
+}
+
+TEST(Scoring, ConnectedRegionsScoreOnVoronoi) {
+    State state;
+    state.numPlayers = 2;
+    state.occupy(4, 4, 0);
+    for (int i = 2; i <= 27; i++) {
+        state.occupy(i, 12, 1);
+    }
+    state.occupy(27, 13, 1);
+    state.occupy(27, 14, 1);
+    state.occupy(27, 15, 1);
+    state.occupy(26, 15, 1);
+    state.occupy(25, 15, 1);
+
+    Voronoi voronoi;
+    voronoi.calculate(state);
+
+    Scores scores = calculateScores(voronoi, state);
+    ASSERT_EQ(306, scores.scores[0]);
+    ASSERT_EQ(243, scores.scores[1]);
+}
+
+TEST(Scoring, DisconnectedRegionsScoreGetBonus) {
+    State state;
+    state.numPlayers = 2;
+    for (int x = 0; x <= MAX_X; x++) {
+        state.occupy(x, 10, 1);
+    }
+
+    state.occupy(0, 0, 0);
+    state.occupy(MAX_X, MAX_Y, 1);
+
+    Voronoi voronoi;
+    voronoi.calculate(state);
+
+    Scores scores = calculateScores(voronoi, state);
+
+    ASSERT_EQ(299 + 1000, scores.scores[0]);
+    ASSERT_EQ(269 - 1000, scores.scores[1]);
+}
+
+TEST(Scoring, ThreeWayBonus) {
+    State state;
+    state.numPlayers = 3;
+    for (int x = 0; x <= MAX_X; x++) {
+        state.occupy(x, 10, 1);
+    }
+    for (int y = 0; y < 10; y++) {
+        state.occupy(20, y, 1);
+    }
+
+    state.occupy(MAX_X, 0, 0);
+    state.occupy(0, 0, 1);
+    state.occupy(MAX_X, MAX_Y, 2);
+
+    Voronoi voronoi;
+    voronoi.calculate(state);
+
+    Scores scores = calculateScores(voronoi, state);
+
+    ASSERT_EQ(89 - 500, scores.scores[0]);
+    ASSERT_EQ(199 - 500, scores.scores[1]);
+    ASSERT_EQ(269 + 1000, scores.scores[2]);
 }
