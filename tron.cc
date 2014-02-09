@@ -20,6 +20,9 @@ const char* UP = "UP";
 
 const char* const dirs[] = {RIGHT, LEFT, DOWN, UP};
 
+const int xOffsets[] = {1, -1, 0, 0};
+const int yOffsets[] = {0, 0, 1, -1};
+
 class Player {
 public:
     int x;
@@ -193,10 +196,86 @@ private:
     }
 };
 
+class Vor {
+public:
+    unsigned char player;
+    unsigned char distance;
+};
+
+class Coord {
+public:
+    unsigned char x;
+    unsigned char y;
+};
+
+class Voronoi {
+private:
+    int sizes[PLAYERS];
+    Vor grid[WIDTH][HEIGHT];
+    Coord openNodes[WIDTH * HEIGHT];
+    int listEnd;
+
+    void clear() {
+        memset(grid, 255, WIDTH * HEIGHT * sizeof(Vor));
+        memset(sizes, 0, PLAYERS * sizeof(int));
+        listEnd = 0;
+    }
+
+    inline void addNode(int x, int y) {
+        openNodes[listEnd].x = x;
+        openNodes[listEnd].y = y;
+        listEnd++;
+    }
+
+public:
+    void calculate(State& state) {
+        clear();
+
+        for (int i = 0; i < state.numPlayers; i++) {
+            Player* player = state.players + i;
+            grid[player->x][player->y].player = i;
+            grid[player->x][player->y].distance = 0;
+            addNode(player->x, player->y);
+        }
+
+        for (int i = 0; i < listEnd; i++) {
+            int x = openNodes[i].x;
+            int y = openNodes[i].y;
+            Vor* vor = &grid[x][y];
+
+            for (int j = 0; j < 4; j++) {
+                int xx = x + xOffsets[j];
+                int yy = y + yOffsets[j];
+                if (!state.occupied(xx, yy)) {
+                    Vor* neighbour = &grid[xx][yy];
+                    if (neighbour->player == 255) {
+                        neighbour->player = vor->player;
+                        neighbour->distance = vor->distance + 1;
+                        addNode(xx, yy);
+                        sizes[vor->player]++;
+                    } else if (neighbour->player != vor->player) {
+                        if (neighbour->distance == vor->distance + 1) {
+                            // This is a shared boundary: remove it from the other player's territory
+                            if (neighbour->player != 254) {
+                                sizes[neighbour->player]--;
+                                neighbour->player = 254;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    int playerRegionSize(int player) {
+        return sizes[player];
+    }
+};
+
 class Scores {
 public:
-    int scores[4];
-    int sizes[4];
+    int scores[PLAYERS];
+    int sizes[PLAYERS];
     const char* move;
 };
 
@@ -214,9 +293,6 @@ public:
 bool compareSizes(const Size& size1, const Size& size2) {
     return size1.size > size2.size;
 }
-
-const int xOffsets[] = {1, -1, 0, 0};
-const int yOffsets[] = {0, 0, 1, -1};
 
 template<class RegionsLike>
 void calculateSizes(RegionsLike& regions, const State& state, vector<Size>& sizes) {

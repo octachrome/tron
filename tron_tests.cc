@@ -325,3 +325,16 @@ TEST(Minimax, DISABLED_RunLotsOfMoves) {
         cout << endl;
     }
 }
+
+TEST(Voronoi, EmptyBoardEqualRegions) {
+    State state;
+    state.numPlayers = 2;
+    state.occupy(5, 10, 0);
+    state.occupy(MAX_X - 5, 10, 1);
+
+    Voronoi voronoi;
+    voronoi.calculate(state);
+
+    ASSERT_EQ(WIDTH * HEIGHT / 2 - 1, voronoi.playerRegionSize(0));
+    ASSERT_EQ(WIDTH * HEIGHT / 2 - 1, voronoi.playerRegionSize(1));
+}
