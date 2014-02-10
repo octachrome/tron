@@ -581,3 +581,30 @@ TEST(Bounding, ShouldPruneWhenBoundExceededByFirstChild) {
     ASSERT_EQ(40, scores.scores[0]);
     ASSERT_EQ(100, scores.scores[1]);
 }
+
+Scores timedSearch(bool pruningEnabled) {
+    State state;
+    state.numPlayers = 2;
+    state.thisPlayer = 0;
+    state.pruningEnabled = pruningEnabled;
+    state.maxDepth = 27; // 27 plies takes 40ms, 28 plies takes 400ms.
+
+    state.occupy(26, 18, 0);
+    state.occupy(16, 1, 1);
+
+    Voronoi voronoi;
+    Bounds bounds;
+
+    clock_t start = clock();
+    Scores scores = minimax(bounds, state, 0, (void*) voronoiRecursive, &voronoi);
+    clock_t elapsed = clock() - start;
+    cerr << (elapsed / CLOCKS_PER_MS) << endl;
+    return scores;
+}
+
+TEST(Bounding, Timing) {
+    Scores s1 = timedSearch(true);
+    Scores s2 = timedSearch(false);
+    ASSERT_EQ(s1.scores[0], s2.scores[0]) << "Pruning should not affect the search result";
+    ASSERT_EQ(s1.scores[1], s2.scores[1]) << "Pruning should not affect the search result";
+}
