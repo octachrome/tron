@@ -276,28 +276,6 @@ void simulateMove(State& state, int player, const char* move) {
     }
 }
 
-void printState(State& state) {
-    for (int y = -1; y <= HEIGHT; y++) {
-        for (int x = -1; x <= WIDTH; x++) {
-            int player = -1;
-            for (int i = 0; i < state.numPlayers; i++) {
-                if (x == state.players[i].x && y == state.players[i].y) {
-                    player = i;
-                    break;
-                }
-            }
-            if (player >= 0) {
-                cout << player;
-            } else if (state.occupied(x, y)) {
-                cout << '#';
-            } else {
-                cout << ' ';
-            }
-        }
-        cout << endl;
-    }
-}
-
 TEST(Minimax, DISABLED_RunLotsOfMoves) {
     State state;
     state.numPlayers = 2;
@@ -582,30 +560,56 @@ TEST(Bounding, ShouldPruneWhenBoundExceededByFirstChild) {
     ASSERT_EQ(100, scores.scores[1]);
 }
 
-Scores timedSearch(bool pruningEnabled) {
-    State state;
-    state.numPlayers = 2;
-    state.thisPlayer = 0;
+Scores timedSearch(State& s, bool pruningEnabled) {
+    State state = s;
     state.pruningEnabled = pruningEnabled;
-    state.pruneMargin = 5;
-    state.maxDepth = 10;
 
-    state.occupy(26, 18, 0);
-    state.occupy(16, 1, 1);
-
+    Regions regions;
     Voronoi voronoi;
     Bounds bounds;
 
     clock_t start = clock();
     Scores scores = minimax(bounds, state, 0, (void*) voronoiRecursive, &voronoi);
+    // Scores scores = minimax(bounds, state, 0, (void*) regionsRecursive, &regions);
     clock_t elapsed = clock() - start;
-    cerr << (elapsed / CLOCKS_PER_MS) << endl;
+    cerr << state.nodesSearched << " in " << (elapsed / CLOCKS_PER_MS) << "ms" << endl;
     return scores;
 }
 
+void randomlyPopulate(State& state) {
+    int count = 5 + rand() % 5;
+    for (int i = 0; i < count; i++) {
+        int x = rand() % MAX_X;
+        int y = rand() % MAX_Y;
+        int size = rand() % 10;
+        if (rand() % 2 == 0) {
+            for (int yy = y; yy <= MAX_Y && yy - y <= size; yy++) {
+                state.occupy(x, yy, 0);
+            }
+        } else {
+            for (int xx = x; xx <= MAX_X && xx - x <= size; xx++) {
+                state.occupy(xx, y, 0);
+            }
+        }
+    }
+}
+
 TEST(Bounding, Timing) {
-    Scores s1 = timedSearch(true);
-    Scores s2 = timedSearch(false);
+    State state;
+    state.numPlayers = 2;
+    state.thisPlayer = 0;
+    state.pruneMargin = 5;
+    state.maxDepth = 9;
+
+    srand(time(0));
+    randomlyPopulate(state);
+
+    state.occupy(26, 18, 0);
+    state.occupy(16, 1, 1);
+    state.print();
+
+    Scores s1 = timedSearch(state, true);
+    Scores s2 = timedSearch(state, false);
     ASSERT_EQ(s1.scores[0], s2.scores[0]) << "Pruning should not affect the search result";
     ASSERT_EQ(s1.scores[1], s2.scores[1]) << "Pruning should not affect the search result";
 }

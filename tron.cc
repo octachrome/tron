@@ -48,6 +48,7 @@ public:
     int maxDepth;
     int pruneMargin;
     bool pruningEnabled;
+    int nodesSearched;
 
     Player players[PLAYERS];
 
@@ -56,6 +57,7 @@ public:
         maxDepth = 10;
         pruneMargin = 10;
         pruningEnabled = true;
+        nodesSearched = 0;
     }
 
     bool occupied(int x, int y) const {
@@ -101,6 +103,28 @@ public:
 
             occupy(headX, headY, i);
         } 
+    }
+
+    void print() {
+        for (int y = -1; y <= HEIGHT; y++) {
+            for (int x = -1; x <= WIDTH; x++) {
+                int player = -1;
+                for (int i = 0; i < numPlayers; i++) {
+                    if (x == players[i].x && y == players[i].y) {
+                        player = i;
+                        break;
+                    }
+                }
+                if (player >= 0) {
+                    cout << player;
+                } else if (occupied(x, y)) {
+                    cout << '#';
+                } else {
+                    cout << ' ';
+                }
+            }
+            cout << endl;
+        }
     }
 };
 
@@ -472,6 +496,7 @@ inline bool checkBounds(Bounds& bounds, Scores& scores, State& state, int player
 }
 
 Scores minimax(Bounds& parentBounds, State& state, int turn, void* sc, void* data) {
+    state.nodesSearched++;
     Bounds bounds = parentBounds;
     ScoreCalculator scoreCalculator = (ScoreCalculator) sc;
 
