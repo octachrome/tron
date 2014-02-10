@@ -46,12 +46,16 @@ public:
     int numPlayers;
     int thisPlayer;
     int maxDepth;
+    int pruneMargin;
+    bool pruningEnabled;
 
     Player players[PLAYERS];
 
     State() {
         memset(grid, 0, WIDTH * HEIGHT * sizeof(int));
         maxDepth = 10;
+        pruneMargin = 10;
+        pruningEnabled = true;
     }
 
     bool occupied(int x, int y) const {
@@ -455,7 +459,20 @@ typedef Scores (*ScoreCalculator)(Bounds& bounds, State& state, int turn, void* 
 
 Regions regions;
 
-Scores minimax(Bounds& bounds, State& state, int turn, void* sc, void* data) {
+inline bool checkBounds(Bounds& bounds, Scores& scores, State& state) {
+    if (!state.pruningEnabled) {
+        return false;
+    }
+    for (int i = 0; i < state.numPlayers; i++) {
+        if (scores.scores[i] + state.pruneMargin <= bounds.bounds[i]) {
+            return true;
+        }
+    }
+    return false;
+}
+
+Scores minimax(Bounds& parentBounds, State& state, int turn, void* sc, void* data) {
+    Bounds bounds = parentBounds;
     ScoreCalculator scoreCalculator = (ScoreCalculator) sc;
 
     Scores bestScores;
@@ -474,8 +491,14 @@ Scores minimax(Bounds& bounds, State& state, int turn, void* sc, void* data) {
             state.clear(x, y);
             state.occupy(origX, origY, player); // restore player position
             scores.move = dirs[i];
+            if (checkBounds(bounds, scores, state)) {
+                return scores;
+            }
             if (scores.scores[player] > bestScores.scores[player]) {
                 bestScores = scores;
+                if (state.pruningEnabled) {
+                    bounds.bounds[player] = scores.scores[player];
+                }
             }
         }
     }

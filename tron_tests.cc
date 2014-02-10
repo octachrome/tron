@@ -222,6 +222,7 @@ TEST(Scoring, ShouldReduceScoreWhenRegionIsShared) {
 
 Scores mockCalculateScores(Bounds& bounds, State& state, int turn, void* dummy, void* data) {
     Scores scores;
+    scores.scores[1] = 1;
     if (state.players[0].x == 11) {
         scores.scores[0] = 3;
     } else if (state.players[0].x == 9) {
@@ -236,7 +237,7 @@ Scores mockCalculateScores(Bounds& bounds, State& state, int turn, void* dummy, 
 
 TEST(Scoring, MaximiseScore) {
     State state;
-    state.numPlayers = 4;
+    state.numPlayers = 2;
     state.thisPlayer = 0;
     state.players[0].x = 10;
     state.players[0].y = 10;
@@ -526,32 +527,57 @@ TEST(Scoring, Dead) {
 }
 
 class CalculateScoresMock {
-public:
+private:
+    int expectedCalls;
     int calls;
+    Scores scores[100];
 
+public:
     CalculateScoresMock() {
+        expectedCalls = 0;
         calls = 0;
     }
 
-    Scores call(State& state, int turn) {
-        Scores scores;
-        return scores;
+    void expectCall(int score0, int score1) {
+        Scores s;
+        s.scores[0] = score0;
+        s.scores[1] = score1;
+        scores[expectedCalls++] = s;
+    }
+
+    Scores call() {
+        calls++;
+        if (calls > expectedCalls) {
+            ADD_FAILURE() << "Unexpected call to score calculator";
+            Scores scores;
+            scores.scores[0] = scores.scores[1] = -9999;
+            return scores;
+        } else {
+            return scores[calls - 1];
+        }
     }
 };
 
 Scores mockCalculateScores2(Bounds& bounds, State& state, int turn, void* dummy, void* data) {
     CalculateScoresMock* mock = (CalculateScoresMock*) data;
-    return mock->call(state, turn);
+    return mock->call();
 }
 
-TEST(Bounding, Stuff) {
+TEST(Bounding, ShouldPruneWhenBoundExceededByFirstChild) {
     State state;
     state.numPlayers = 2;
     state.thisPlayer = 0;
-    state.players[0].x = 10;
-    state.players[0].y = 10;
+
+    state.occupy(5, 5, 0);
+    state.occupy(15, 15, 1);
 
     CalculateScoresMock mock;
+    mock.expectCall(40, 100);
+
     Bounds bounds;
-    Scores scores = minimax(bounds, state, 0, (void*) mockCalculateScores2, &mock);
+    bounds.bounds[0] = 50;
+
+    Scores scores = minimax(bounds, state, 1, (void*) mockCalculateScores2, &mock);
+    ASSERT_EQ(40, scores.scores[0]);
+    ASSERT_EQ(100, scores.scores[1]);
 }
