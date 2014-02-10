@@ -517,7 +517,7 @@ Scores regionsRecursive(Bounds& bounds, State& state, int turn, void* sc, void* 
     if (turn >= state.maxDepth) {
         return calculateScores(*((Regions*)data), state);
     } else {
-        return minimax(bounds, state, turn + 1, sc, data);
+        return minimax(bounds, state, turn, sc, data);
     }
 }
 
@@ -525,7 +525,7 @@ Scores voronoiRecursive(Bounds& bounds, State& state, int turn, void* sc, void* 
     if (turn >= state.maxDepth) {
         return calculateScores(*((Voronoi*)data), state);
     } else {
-        return minimax(bounds, state, turn + 1, sc, data);
+        return minimax(bounds, state, turn, sc, data);
     }
 }
 

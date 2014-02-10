@@ -587,8 +587,8 @@ Scores timedSearch(bool pruningEnabled) {
     state.numPlayers = 2;
     state.thisPlayer = 0;
     state.pruningEnabled = pruningEnabled;
-    state.pruneMargin = 3;
-    state.maxDepth = 20;
+    state.pruneMargin = 5;
+    state.maxDepth = 10;
 
     state.occupy(26, 18, 0);
     state.occupy(16, 1, 1);
