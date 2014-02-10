@@ -459,12 +459,12 @@ typedef Scores (*ScoreCalculator)(Bounds& bounds, State& state, int turn, void* 
 
 Regions regions;
 
-inline bool checkBounds(Bounds& bounds, Scores& scores, State& state) {
+inline bool checkBounds(Bounds& bounds, Scores& scores, State& state, int player) {
     if (!state.pruningEnabled) {
         return false;
     }
     for (int i = 0; i < state.numPlayers; i++) {
-        if (scores.scores[i] + state.pruneMargin <= bounds.bounds[i]) {
+        if (i != player && scores.scores[i] + state.pruneMargin <= bounds.bounds[i]) {
             return true;
         }
     }
@@ -491,7 +491,7 @@ Scores minimax(Bounds& parentBounds, State& state, int turn, void* sc, void* dat
             state.clear(x, y);
             state.occupy(origX, origY, player); // restore player position
             scores.move = dirs[i];
-            if (checkBounds(bounds, scores, state)) {
+            if (checkBounds(bounds, scores, state, player)) {
                 return scores;
             }
             if (scores.scores[player] > bestScores.scores[player]) {

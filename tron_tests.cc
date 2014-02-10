@@ -587,7 +587,8 @@ Scores timedSearch(bool pruningEnabled) {
     state.numPlayers = 2;
     state.thisPlayer = 0;
     state.pruningEnabled = pruningEnabled;
-    state.maxDepth = 27; // 27 plies takes 40ms, 28 plies takes 400ms.
+    state.pruneMargin = 3;
+    state.maxDepth = 20;
 
     state.occupy(26, 18, 0);
     state.occupy(16, 1, 1);
