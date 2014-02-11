@@ -386,20 +386,20 @@ TEST(Scoring, DISABLED_Timing) {
     state.occupy(25, 15, 1);
 
     Voronoi voronoi;
-    clock_t start = clock();
+    long start = millis();
     for (int i = 0; i < 10000; i++) {
         voronoi.calculate(state);
     }
-    clock_t elapsed = clock() - start;
-    cerr << (elapsed / CLOCKS_PER_MS) << endl; // 470ms
+    long elapsed = millis() - start;
+    cerr << elapsed << endl; // 470ms
 
     Regions regions;
-    start = clock();
+    start = millis();
     for (int i = 0; i < 10000; i++) {
         regions.findRegions(state);
     }
-    elapsed = clock() - start;
-    cerr << (elapsed / CLOCKS_PER_MS) << endl; // 170ms
+    elapsed = millis() - start;
+    cerr << elapsed << endl; // 170ms
 }
 
 TEST(Voronoi, ShouldFindTwoRegionsWhenDividedHorizontally) {
@@ -560,6 +560,19 @@ TEST(Bounding, ShouldPruneWhenBoundExceededByFirstChild) {
     ASSERT_EQ(100, scores.scores[1]);
 }
 
+Scores randRecursive(Bounds& bounds, State& state, int turn, void* sc, void* data) {
+    if (turn >= state.maxDepth || state.isTimeLimitReached()) {
+        Scores scores;
+        for (int i = 0; i < state.numPlayers; i++) {
+            scores.scores[i] = rand() % 500;
+            scores.move = DOWN;
+        }
+        return scores;
+    } else {
+        return minimax(bounds, state, turn, sc, data);
+    }
+}
+
 Scores timedSearch(State& s, bool pruningEnabled) {
     State state = s;
     state.pruningEnabled = pruningEnabled;
@@ -568,11 +581,13 @@ Scores timedSearch(State& s, bool pruningEnabled) {
     Voronoi voronoi;
     Bounds bounds;
 
-    clock_t start = clock();
-    Scores scores = minimax(bounds, state, 0, (void*) voronoiRecursive, &voronoi);
+    state.resetTimer();
+    long start = millis();
+    // Scores scores = minimax(bounds, state, 0, (void*) voronoiRecursive, &voronoi);
+    Scores scores = minimax(bounds, state, 0, (void*) randRecursive, 0);
     // Scores scores = minimax(bounds, state, 0, (void*) regionsRecursive, &regions);
-    clock_t elapsed = clock() - start;
-    cerr << state.nodesSearched << " in " << (elapsed / CLOCKS_PER_MS) << "ms" << endl;
+    long elapsed = millis() - start;
+    cerr << state.nodesSearched << " in " << elapsed << "ms" << endl;
     return scores;
 }
 
@@ -599,7 +614,7 @@ TEST(Bounding, Timing) {
     state.numPlayers = 2;
     state.thisPlayer = 0;
     state.pruneMargin = 5;
-    state.maxDepth = 9;
+    state.maxDepth = 23;
 
     srand(time(0));
     randomlyPopulate(state);

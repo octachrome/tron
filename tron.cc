@@ -3,15 +3,17 @@
 #include <map>
 #include <iostream>
 #include <iomanip>
-#include <ctime>
 #include <algorithm>
 #include <climits>
+#include <ctime>
 
 #define WIDTH  30
 #define HEIGHT 20
 #define MAX_X  (WIDTH - 1)
 #define MAX_Y  (HEIGHT - 1)
 #define PLAYERS 4
+#define TIME_LIMIT 90
+#define LOWER_TIME_LIMIT 70
 
 using namespace std;
 
@@ -24,6 +26,12 @@ const char* const dirs[] = {RIGHT, LEFT, DOWN, UP};
 
 const int xOffsets[] = {1, -1, 0, 0};
 const int yOffsets[] = {0, 0, 1, -1};
+
+#define CLOCKS_PER_MS (CLOCKS_PER_SEC / 1000)
+
+long millis() {
+    return clock() / CLOCKS_PER_MS;
+}
 
 class Player {
 public:
@@ -40,7 +48,7 @@ public:
 
 class State {
 private:
-    int grid[WIDTH][HEIGHT];
+    char grid[WIDTH][HEIGHT];
 
 public:
     int numPlayers;
@@ -49,44 +57,63 @@ public:
     int pruneMargin;
     bool pruningEnabled;
     int nodesSearched;
+    long startTime;
+    bool timeLimitReached;
 
     Player players[PLAYERS];
 
     State() {
-        memset(grid, 0, WIDTH * HEIGHT * sizeof(int));
+        memset(grid, 0, WIDTH * HEIGHT * sizeof(char));
         maxDepth = 10;
         pruneMargin = 10;
         pruningEnabled = true;
         nodesSearched = 0;
+        resetTimer();
     }
 
-    bool occupied(int x, int y) const {
+    inline void resetTimer() {
+        startTime = millis();
+        timeLimitReached = false;
+    }
+
+    inline bool isTimeLimitReached() {
+        if (timeLimitReached) {
+            return true;
+        } else if (millis() - startTime >= TIME_LIMIT) {
+            timeLimitReached = true;
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    inline bool occupied(int x, int y) const {
         if (x < 0 || y < 0 || x > MAX_X || y > MAX_Y) {
             return true;
         }
         return grid[x][y] != 0;
     }
 
-    void occupy(int x, int y, int player) {
+    inline void occupy(int x, int y, int player) {
         players[player].x = x;
         players[player].y = y;
 
         grid[x][y] = 1;
     }
 
-    void clear(int x, int y) {
+    inline void clear(int x, int y) {
         grid[x][y] = 0;
     }
 
-    int x() {
+    inline int x() {
         return players[thisPlayer].x;
     }
 
-    int y() {
+    inline int y() {
         return players[thisPlayer].y;
     }
 
-    void readTurn() {
+    inline void readTurn() {
         cin >> numPlayers;
         cin >> thisPlayer;
 
@@ -539,7 +566,7 @@ Scores minimax(Bounds& parentBounds, State& state, int turn, void* sc, void* dat
 }
 
 Scores regionsRecursive(Bounds& bounds, State& state, int turn, void* sc, void* data) {
-    if (turn >= state.maxDepth) {
+    if (turn >= state.maxDepth || state.isTimeLimitReached()) {
         return calculateScores(*((Regions*)data), state);
     } else {
         return minimax(bounds, state, turn, sc, data);
@@ -547,7 +574,7 @@ Scores regionsRecursive(Bounds& bounds, State& state, int turn, void* sc, void* 
 }
 
 Scores voronoiRecursive(Bounds& bounds, State& state, int turn, void* sc, void* data) {
-    if (turn >= state.maxDepth) {
+    if (turn >= state.maxDepth || state.isTimeLimitReached()) {
         return calculateScores(*((Voronoi*)data), state);
     } else {
         return minimax(bounds, state, turn, sc, data);
@@ -579,24 +606,38 @@ const char* findLargestRegion(int x, int y) {
     return dirs[maxIdx];
 }
 
-#define CLOCKS_PER_MS (CLOCKS_PER_SEC / 1000)
-
 void run() {
     State state;
     Scores scores;
     Bounds bounds;
 
     while (1) {
+        state.resetTimer();
         state.readTurn();
 
-        for (int i = 0; i < state.numPlayers; i++) {
-            cerr << state.players[i].x << "," << state.players[i].y << endl;
-        }
+        // for (int i = 0; i < state.numPlayers; i++) {
+        //     cerr << state.players[i].x << "," << state.players[i].y << endl;
+        // }
 
-        clock_t start = clock();
+        long start = millis();
         scores = minimax(bounds, state, 0, (void*) regionsRecursive, &regions);
-        clock_t elapsed = clock() - start;
-        cerr << (elapsed / CLOCKS_PER_MS) << endl;
+        long elapsed = millis() - start;
+        cerr << elapsed << "ms" << endl;
+
+        for (int i = 0; i < state.numPlayers; i++) {
+            cerr << scores.scores[i];
+            if (i == state.thisPlayer) {
+                cerr << "*";
+            }
+            cerr << endl;
+        }
+        cerr << state.maxDepth << " plies" << endl;
+
+        if (state.isTimeLimitReached()) {
+            state.maxDepth--;
+        } else if (millis() - state.startTime <= LOWER_TIME_LIMIT) {
+            state.maxDepth++;
+        }
 
         cout << scores.move << endl;
     }
