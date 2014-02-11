@@ -583,8 +583,8 @@ Scores timedSearch(State& s, bool pruningEnabled) {
 
     state.resetTimer();
     long start = millis();
-    // Scores scores = minimax(bounds, state, 0, (void*) voronoiRecursive, &voronoi);
-    Scores scores = minimax(bounds, state, 0, (void*) randRecursive, 0);
+    Scores scores = minimax(bounds, state, 0, (void*) voronoiRecursive, &voronoi);
+    // Scores scores = minimax(bounds, state, 0, (void*) randRecursive, 0);
     // Scores scores = minimax(bounds, state, 0, (void*) regionsRecursive, &regions);
     long elapsed = millis() - start;
     cerr << state.nodesSearched << " in " << elapsed << "ms" << endl;
@@ -613,18 +613,19 @@ TEST(Bounding, Timing) {
     State state;
     state.numPlayers = 2;
     state.thisPlayer = 0;
-    state.pruneMargin = 5;
-    state.maxDepth = 23;
+    state.timeLimitEnabled = false;
 
     srand(time(0));
-    randomlyPopulate(state);
+    // randomlyPopulate(state);
 
-    state.occupy(26, 18, 0);
-    state.occupy(16, 1, 1);
+    state.occupy(9, 12, 0);
+    state.occupy(21, 2, 1);
     state.print();
 
     Scores s1 = timedSearch(state, true);
     Scores s2 = timedSearch(state, false);
+    cout << s1.scores[0] << endl;
+    cout << s1.scores[1] << endl;
     ASSERT_EQ(s1.scores[0], s2.scores[0]) << "Pruning should not affect the search result";
     ASSERT_EQ(s1.scores[1], s2.scores[1]) << "Pruning should not affect the search result";
 }

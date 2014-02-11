@@ -57,6 +57,7 @@ public:
     int pruneMargin;
     bool pruningEnabled;
     int nodesSearched;
+    bool timeLimitEnabled;
     long startTime;
     bool timeLimitReached;
 
@@ -64,10 +65,11 @@ public:
 
     State() {
         memset(grid, 0, WIDTH * HEIGHT * sizeof(char));
-        maxDepth = 10;
-        pruneMargin = 10;
+        maxDepth = 8;
+        pruneMargin = 0;
         pruningEnabled = true;
         nodesSearched = 0;
+        timeLimitEnabled = true;
         resetTimer();
     }
 
@@ -77,7 +79,9 @@ public:
     }
 
     inline bool isTimeLimitReached() {
-        if (timeLimitReached) {
+        if (!timeLimitEnabled) {
+            return false;
+        } else if (timeLimitReached) {
             return true;
         } else if (millis() - startTime >= TIME_LIMIT) {
             timeLimitReached = true;
@@ -508,8 +512,6 @@ Scores calculateScores(Voronoi& voronoi, const State& state) {
 
 typedef Scores (*ScoreCalculator)(Bounds& bounds, State& state, int turn, void* scoreCalculator, void* data);
 
-Regions regions;
-
 inline bool checkBounds(Bounds& bounds, Scores& scores, State& state, int player) {
     if (!state.pruningEnabled) {
         return false;
@@ -581,35 +583,12 @@ Scores voronoiRecursive(Bounds& bounds, State& state, int turn, void* sc, void* 
     }
 }
 
-int sizeOf(int x, int y) {
-    Region* region = regions.regionAt(x, y);
-    return region ? region->size : 0;
-}
-
-const char* findLargestRegion(int x, int y) {
-    int sizes[4];
-
-    sizes[0] = sizeOf(x + 1, y);
-    sizes[1] = sizeOf(x - 1, y);
-    sizes[2] = sizeOf(x, y + 1);
-    sizes[3] = sizeOf(x, y - 1);
-
-    int max = sizes[0];
-    int maxIdx = 0;
-    for (int i = 1; i < 4; i++) {
-        if (sizes[i] > max) {
-            max = sizes[i];
-            maxIdx = i;
-        }
-    }
-
-    return dirs[maxIdx];
-}
-
 void run() {
     State state;
     Scores scores;
+    Voronoi voronoi;
     Bounds bounds;
+    state.timeLimitEnabled = false;
 
     while (1) {
         state.resetTimer();
@@ -620,7 +599,7 @@ void run() {
         // }
 
         long start = millis();
-        scores = minimax(bounds, state, 0, (void*) regionsRecursive, &regions);
+        scores = minimax(bounds, state, 0, (void*) voronoiRecursive, &voronoi);
         long elapsed = millis() - start;
         cerr << elapsed << "ms" << endl;
 
@@ -633,10 +612,12 @@ void run() {
         }
         cerr << state.maxDepth << " plies" << endl;
 
-        if (state.isTimeLimitReached()) {
-            state.maxDepth--;
-        } else if (millis() - state.startTime <= LOWER_TIME_LIMIT) {
-            state.maxDepth++;
+        if (state.timeLimitEnabled) {
+            if (state.isTimeLimitReached()) {
+                state.maxDepth--;
+            } else if (millis() - state.startTime <= LOWER_TIME_LIMIT) {
+                state.maxDepth++;
+            }
         }
 
         cout << scores.move << endl;
