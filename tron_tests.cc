@@ -698,6 +698,29 @@ TEST(Minimax, PlayerShouldDieWhenNoLegalMoves) {
     Scores scores = minimax(bounds, state, 0, (void*) calculateScores_PSDWNLM, &results);
 
     ASSERT_EQ(1, results.calls) << "Expected one call";
+    ASSERT_EQ(1, results.turn) << "Expected player 0 to miss their turn";
     ASSERT_FALSE(results.occupied) << "Expected player 0 to be removed";
     ASSERT_TRUE(state.occupied(1, 1)) << "Expected player to be revived after the call";
+}
+
+TEST(Minimax, DeadPlayerShouldNotGetTurn) {
+    Bounds bounds;
+    State state;
+    state.numPlayers = 2;
+    state.thisPlayer = 0;
+
+    state.occupy(1, 1, 0);
+    state.occupy(5, 5, 1);
+
+    state.kill(0);
+
+    TestResults_PSDWNLM results;
+    results.calls = 0;
+
+    Scores scores = minimax(bounds, state, 0, (void*) calculateScores_PSDWNLM, &results);
+
+    ASSERT_EQ(1, results.calls) << "Expected one call";
+    ASSERT_EQ(1, results.turn) << "Expected player 0 to miss their turn";
+    ASSERT_FALSE(results.occupied) << "Expected player 0 to be missing";
+    ASSERT_FALSE(state.occupied(1, 1)) << "Expected player 0 to be still missing after the call";
 }

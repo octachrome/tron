@@ -545,6 +545,11 @@ Scores minimax(Bounds& parentBounds, State& state, int turn, void* sc, void* dat
 
     int player = (state.thisPlayer + turn) % state.numPlayers;
 
+    if (!state.players[player].alive) {
+        // Skip dead players
+        return scoreCalculator(bounds, state, turn + 1, (void*) scoreCalculator, data);
+    }
+
     Scores bestScores;
     bestScores.scores[player] = INT_MIN;
 
