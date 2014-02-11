@@ -13,7 +13,7 @@
 #define MAX_Y  (HEIGHT - 1)
 #define PLAYERS 4
 #define TIME_LIMIT 90
-#define LOWER_TIME_LIMIT 70
+#define LOWER_TIME_LIMIT 60
 
 using namespace std;
 
@@ -37,12 +37,16 @@ class Player {
 public:
     int x;
     int y;
+    bool alive;
 
-    Player() {}
+    Player() {
+        alive = true;
+    }
 
     Player(int p_x, int p_y) {
         x = p_x;
         y = p_y;
+        alive = true;
     }
 };
 
@@ -60,12 +64,11 @@ public:
     bool timeLimitEnabled;
     long startTime;
     bool timeLimitReached;
-
     Player players[PLAYERS];
 
     State() {
-        memset(grid, 0, WIDTH * HEIGHT * sizeof(char));
-        maxDepth = 8;
+        memset(grid, -1, WIDTH * HEIGHT * sizeof(char));
+        maxDepth = 9;
         pruneMargin = 0;
         pruningEnabled = true;
         nodesSearched = 0;
@@ -95,18 +98,27 @@ public:
         if (x < 0 || y < 0 || x > MAX_X || y > MAX_Y) {
             return true;
         }
-        return grid[x][y] != 0;
+        int player = grid[x][y];
+        return player != -1 && players[player].alive;
     }
 
     inline void occupy(int x, int y, int player) {
         players[player].x = x;
         players[player].y = y;
 
-        grid[x][y] = 1;
+        grid[x][y] = player;
+    }
+
+    inline void kill(int player) {
+        players[player].alive = false;
+    }
+
+    inline void revive(int player) {
+        players[player].alive = true;
     }
 
     inline void clear(int x, int y) {
-        grid[x][y] = 0;
+        grid[x][y] = -1;
     }
 
     inline int x() {
@@ -588,7 +600,6 @@ void run() {
     Scores scores;
     Voronoi voronoi;
     Bounds bounds;
-    state.timeLimitEnabled = false;
 
     while (1) {
         state.resetTimer();

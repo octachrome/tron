@@ -609,7 +609,7 @@ void randomlyPopulate(State& state) {
     }
 }
 
-TEST(Bounding, Timing) {
+TEST(Bounding, DISABLED_Timing) {
     State state;
     state.numPlayers = 2;
     state.thisPlayer = 0;
@@ -628,4 +628,21 @@ TEST(Bounding, Timing) {
     cout << s1.scores[1] << endl;
     ASSERT_EQ(s1.scores[0], s2.scores[0]) << "Pruning should not affect the search result";
     ASSERT_EQ(s1.scores[1], s2.scores[1]) << "Pruning should not affect the search result";
+}
+
+TEST(State, DeadPlayersDoNotOccupySpace) {
+    State state;
+    state.occupy(4, 4, 0);
+    state.occupy(5, 5, 1);
+
+    state.kill(1);
+
+    ASSERT_FALSE(state.occupied(3, 3));
+    ASSERT_TRUE(state.occupied(4, 4));
+    ASSERT_FALSE(state.occupied(5, 5));
+
+    state.revive(1);
+    ASSERT_FALSE(state.occupied(3, 3));
+    ASSERT_TRUE(state.occupied(4, 4));
+    ASSERT_TRUE(state.occupied(5, 5));
 }
