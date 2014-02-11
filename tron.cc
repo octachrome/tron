@@ -326,9 +326,11 @@ public:
 
         for (int i = 0; i < state.numPlayers; i++) {
             const Player* player = state.players + i;
-            grid[player->x][player->y].player = i;
-            grid[player->x][player->y].distance = 0;
-            addNode(player->x, player->y);
+            if (player->alive) {
+                grid[player->x][player->y].player = i;
+                grid[player->x][player->y].distance = 0;
+                addNode(player->x, player->y);
+            }
             regions[i] = i;
         }
 
@@ -541,8 +543,9 @@ Scores minimax(Bounds& parentBounds, State& state, int turn, void* sc, void* dat
     Bounds bounds = parentBounds;
     ScoreCalculator scoreCalculator = (ScoreCalculator) sc;
 
-    Scores bestScores;
     int player = (state.thisPlayer + turn) % state.numPlayers;
+
+    Scores bestScores;
     bestScores.scores[player] = INT_MIN;
 
     int origX = state.players[player].x;
@@ -571,8 +574,9 @@ Scores minimax(Bounds& parentBounds, State& state, int turn, void* sc, void* dat
 
     if (bestScores.scores[player] == INT_MIN) {
         // All moves are illegal, so pass
+        state.kill(player);
         Scores scores = scoreCalculator(bounds, state, turn + 1, (void*) scoreCalculator, data);
-        scores.move = 0;
+        state.revive(player);
         return scores;
     } else {
         return bestScores;

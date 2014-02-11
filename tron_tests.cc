@@ -220,7 +220,7 @@ TEST(Scoring, ShouldReduceScoreWhenRegionIsShared) {
     ASSERT_EQ(11, sizes[1].size) << "Player 1 should pick the smaller region, because its size is not halved";
 }
 
-Scores mockCalculateScores(Bounds& bounds, State& state, int turn, void* dummy, void* data) {
+Scores calculateScores_MaximiseScore(Bounds& bounds, State& state, int turn, void* dummy, void* data) {
     Scores scores;
     scores.scores[1] = 1;
     if (state.players[0].x == 11) {
@@ -244,7 +244,7 @@ TEST(Scoring, MaximiseScore) {
 
     Bounds bounds;
 
-    Scores scores = minimax(bounds, state, 0, (void*) mockCalculateScores, 0);
+    Scores scores = minimax(bounds, state, 0, (void*) calculateScores_MaximiseScore, 0);
     ASSERT_EQ(DOWN, scores.move);
 }
 
@@ -482,7 +482,7 @@ TEST(Scoring, ThreeWayBonus) {
     ASSERT_EQ(269 + 1000, scores.scores[2]);
 }
 
-TEST(Scoring, Dead) {
+TEST(Scoring, CutOffOnAllSides) {
     State state;
     state.numPlayers = 2;
 
@@ -502,6 +502,23 @@ TEST(Scoring, Dead) {
 
     ASSERT_EQ(-1000, scores.scores[0]);
     ASSERT_EQ(WIDTH * HEIGHT - 10 + 1000, scores.scores[1]);
+}
+
+TEST(Scoring, Dead) {
+    State state;
+    state.numPlayers = 2;
+
+    state.occupy(0, 0, 0);
+    state.occupy(MAX_X, MAX_Y, 1);
+
+    state.kill(0);
+
+    Voronoi voronoi;
+
+    Scores scores = calculateScores(voronoi, state);
+
+    ASSERT_EQ(-1000, scores.scores[0]);
+    ASSERT_EQ(WIDTH * HEIGHT - 1 + 1000, scores.scores[1]);
 }
 
 class CalculateScoresMock {
@@ -536,7 +553,7 @@ public:
     }
 };
 
-Scores mockCalculateScores2(Bounds& bounds, State& state, int turn, void* dummy, void* data) {
+Scores mockCalculateScores(Bounds& bounds, State& state, int turn, void* dummy, void* data) {
     CalculateScoresMock* mock = (CalculateScoresMock*) data;
     return mock->call();
 }
@@ -555,7 +572,7 @@ TEST(Bounding, ShouldPruneWhenBoundExceededByFirstChild) {
     Bounds bounds;
     bounds.bounds[0] = 50;
 
-    Scores scores = minimax(bounds, state, 1, (void*) mockCalculateScores2, &mock);
+    Scores scores = minimax(bounds, state, 1, (void*) mockCalculateScores, &mock);
     ASSERT_EQ(40, scores.scores[0]);
     ASSERT_EQ(100, scores.scores[1]);
 }
@@ -645,4 +662,42 @@ TEST(State, DeadPlayersDoNotOccupySpace) {
     ASSERT_FALSE(state.occupied(3, 3));
     ASSERT_TRUE(state.occupied(4, 4));
     ASSERT_TRUE(state.occupied(5, 5));
+}
+
+struct TestResults_PSDWNLM {
+    int calls;
+    int turn;
+    bool occupied;
+};
+
+Scores calculateScores_PSDWNLM(Bounds& bounds, State& state, int turn, void* dummy, void* data) {
+    TestResults_PSDWNLM* results = (TestResults_PSDWNLM*) data;
+    results->calls++;
+    results->turn = turn;
+    results->occupied = state.occupied(1, 1);
+    return Scores();
+}
+
+TEST(Minimax, PlayerShouldDieWhenNoLegalMoves) {
+    Bounds bounds;
+    State state;
+    state.numPlayers = 2;
+    state.thisPlayer = 0;
+
+    // Player 0 is in the centre of a 3x3 block
+    for (int x = 0; x < 3; x++) {
+        for (int y = 0; y < 3; y++) {
+            state.occupy(x, y, 0);
+        }
+    }
+    state.occupy(1, 1, 0);
+
+    TestResults_PSDWNLM results;
+    results.calls = 0;
+
+    Scores scores = minimax(bounds, state, 0, (void*) calculateScores_PSDWNLM, &results);
+
+    ASSERT_EQ(1, results.calls) << "Expected one call";
+    ASSERT_FALSE(results.occupied) << "Expected player 0 to be removed";
+    ASSERT_TRUE(state.occupied(1, 1)) << "Expected player to be revived after the call";
 }
