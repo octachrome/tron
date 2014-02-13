@@ -438,7 +438,7 @@ TEST(Minimax, PlayerShouldDieWhenNoLegalMoves) {
     TestResults_PSDWNLM results;
     results.calls = 0;
 
-    Scores scores = minimax(bounds, state, 0, (void*) calculateScores_PSDWNLM, &results);
+    minimax(bounds, state, 0, (void*) calculateScores_PSDWNLM, &results);
 
     ASSERT_EQ(1, results.calls) << "Expected one call";
     ASSERT_EQ(1, results.turn) << "Expected player 0 to miss their turn";
@@ -460,7 +460,7 @@ TEST(Minimax, DeadPlayerShouldNotGetTurn) {
     TestResults_PSDWNLM results;
     results.calls = 0;
 
-    Scores scores = minimax(bounds, state, 0, (void*) calculateScores_PSDWNLM, &results);
+    minimax(bounds, state, 0, (void*) calculateScores_PSDWNLM, &results);
 
     ASSERT_EQ(1, results.calls) << "Expected one call";
     ASSERT_EQ(1, results.turn) << "Expected player 0 to miss their turn";
@@ -468,13 +468,15 @@ TEST(Minimax, DeadPlayerShouldNotGetTurn) {
     ASSERT_FALSE(state.occupied(1, 1)) << "Expected player 0 to be still missing after the call";
 }
 
-void readBoard(const char* filename, State& state) {
+void readBoard(State& state, istream& is) {
     Player players[PLAYERS];
-    ifstream is(filename);
+    for (int i = 0; i < PLAYERS; i++) {
+        players[i].x = -1;
+    }
     string line;
     int y = 0;
     while (getline(is, line)) {
-        for (int x = 0; x < line.size(); x++) {
+        for (unsigned x = 0; x < line.size(); x++) {
             char cell = line[x];
             int player = cell - '0';
             if (player >= 0 && player < PLAYERS) {
@@ -489,15 +491,42 @@ void readBoard(const char* filename, State& state) {
         }
         y++;
     }
-    is.close();
-    for (int i = 0; i < PLAYERS; i++) {
-        state.players[i] = players[i];
+    for (unsigned i = 0; i < PLAYERS; i++) {
+        if (players[i].x >= 0) {
+            state.occupy(players[i].x, players[i].y, i);
+        }
     }
+}
+
+void readBoard(State& state, const char* board) {
+    istringstream is(board);
+    readBoard(state, is);
 }
 
 TEST(Util, BoardReader) {
     State state;
-    readBoard("board1.txt", state);
+    readBoard(state,
+        "....*....*....*....*....*....*\n"
+        "....*....*....*....*....*...0A\n"
+        "....*....*....*....*C...*.000*\n"
+        "....*B1111111111.2222...*00..*\n"
+        "....*....*....*1.2.*...000...*\n"
+        "....*....*....11.2.*.000*....*\n"
+        "....*....*....1..2.*.000000000\n"
+        "..1111111111..1..2.00000000000\n"
+        "..1.*....*.11.1..2.*....*....*\n"
+        "....33...*..111..22*....*....*\n"
+        "..333D...*....*...2*....*....*\n"
+        "..3333333333333333222...*....*\n"
+        "....*....*....*..333222222...*\n"
+        "....*....*....*....3322222...*\n"
+        "....*....*....*....*3222*....*\n"
+        "....*....*....*....*3..22....*\n"
+        "....*....*....*....*33..2....*\n"
+        "....*....*....*....*.3..*....*\n"
+        "....*....*....*....*.3..*....*\n"
+        "....*....*....*....*....*....*\n");
+
     ASSERT_TRUE(state.occupied(2, 7));
     ASSERT_FALSE(state.occupied(3, 8));
     ASSERT_EQ(5, state.players[1].x);
@@ -510,7 +539,27 @@ TEST(Minimax, DISABLED_ZeroScoreWhenEnclosed) {
     state.thisPlayer = 0;
     state.maxDepth = 26;
     state.timeLimitEnabled = false;
-    readBoard("board2.txt", state);
+    readBoard(state,
+        "....*....*....*....*....*....*\n"
+        "....*....*....*..22222..*...00\n"
+        "....*....*....*..2222C..*.0000\n"
+        "..11111111111111.2222...*00000\n"
+        ".11.*....*....*1.2.*...000.000\n"
+        ".1..*....*....11.2.*.000*..A00\n"
+        ".1..*....*....1..2.*.000000000\n"
+        "B11111111111..1..2.00000000000\n"
+        "..13333..*.11.1..2.*....*....*\n"
+        ".D33333..*..111..22*....*....*\n"
+        "..33333..*....*...2*....*....*\n"
+        "..3333333333333333222...*....*\n"
+        "....*....*....*..333222222...*\n"
+        "....*....*....*....3322222...*\n"
+        "....*....*....*....*3222*....*\n"
+        "....*....*....*....*3..22....*\n"
+        "....*....*....*....*33..2....*\n"
+        "....*....*....*....*.3..*....*\n"
+        "....*....*....*....*.3..*....*\n"
+        "....*....*....*....*....*....*\n");
 
     Voronoi voronoi;
     Bounds bounds;
@@ -522,4 +571,49 @@ TEST(Minimax, DISABLED_ZeroScoreWhenEnclosed) {
     cout << scores.scores[2] << endl;
     cout << scores.scores[3] << endl;
     cout << scores.move << endl;
+}
+
+TEST(Minimax, BothPlayersDieButTheSecondShouldScore) {
+    State state;
+    state.numPlayers = 2;
+    state.thisPlayer = 0;
+    state.maxDepth = 1;
+    state.timeLimitEnabled = false;
+
+    readBoard(state,
+        "000..111\n"
+        "0A0..1B1\n"
+        "000..1.1\n"
+        ".....111\n");
+
+    Voronoi voronoi;
+    Bounds bounds;
+
+    Scores scores = minimax(bounds, state, 0, (void*) voronoiRecursive, &voronoi);
+
+    ASSERT_EQ(-1000, scores.scores[0]) << "First player loses";
+    ASSERT_EQ(1001, scores.scores[1]) << "Second player wins";
+}
+
+TEST(Minimax, BothPlayersDieInThreeMovesButTheSecondShouldScore) {
+    State state;
+    state.numPlayers = 2;
+    state.thisPlayer = 0;
+    state.maxDepth = 1;
+    state.timeLimitEnabled = false;
+
+    readBoard(state,
+        "000..111\n"
+        "0A0..1B1\n"
+        "0.0..1.1\n"
+        "000..1.1\n"
+        ".....111\n");
+
+    Voronoi voronoi;
+    Bounds bounds;
+
+    Scores scores = minimax(bounds, state, 0, (void*) voronoiRecursive, &voronoi);
+
+    ASSERT_EQ(-1000, scores.scores[0]) << "First player loses";
+    ASSERT_EQ(1002, scores.scores[1]) << "Second player wins";
 }

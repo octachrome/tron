@@ -64,6 +64,7 @@ public:
     Player players[PLAYERS];
     // this is a bitmask of living players
     unsigned char alive;
+    int deathCount;
 
     State() {
         memset(grid, 0, WIDTH * HEIGHT * sizeof(char));
@@ -73,6 +74,7 @@ public:
         nodesSearched = 0;
         timeLimitEnabled = true;
         alive = 255;
+        deathCount = 0;
         resetTimer();
     }
 
@@ -118,14 +120,20 @@ public:
 
     inline void kill(int player) {
         alive &= ~(1 << player);
+        deathCount++;
     }
 
     inline void revive(int player) {
         alive |= (1 << player);
+        deathCount--;
     }
 
     inline bool isAlive(int player) const {
         return alive & (1 << player);
+    }
+
+    inline int livingCount() {
+        return numPlayers - deathCount;
     }
 
     inline int x() const {
@@ -285,7 +293,6 @@ public:
 class Scores {
 public:
     int scores[PLAYERS];
-    int sizes[PLAYERS];
     const char* move;
 };
 
@@ -328,7 +335,12 @@ Scores calculateScores(Voronoi& voronoi, State& state) {
 
         int region = voronoi.regionForPlayer(i);
         occupants[region]++;
-        totalSize[region] += voronoi.playerRegionSize(i);
+
+        if (state.isAlive(i)) {
+            totalSize[region] += voronoi.playerRegionSize(i);
+        } else {
+            totalSize[region] = -1;
+        }
 
         if (totalSize[region] > maxSize) {
             maxSize = totalSize[region];
@@ -375,8 +387,8 @@ Scores minimax(Bounds& parentBounds, State& state, int turn, void* sc, void* dat
 
     int player = (state.thisPlayer + turn) % state.numPlayers;
 
-    if (!state.isAlive(player)) {
-        // Skip dead players
+    // Skip dead players, and fast forward to scoring when only one player left alive
+    if (!state.isAlive(player) || state.livingCount() == 1) {
         return scoreCalculator(bounds, state, turn + 1, (void*) scoreCalculator, data);
     }
 
