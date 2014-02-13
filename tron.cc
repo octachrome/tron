@@ -37,22 +37,19 @@ class Player {
 public:
     int x;
     int y;
-    bool alive;
 
     Player() {
-        alive = true;
     }
 
     Player(int p_x, int p_y) {
         x = p_x;
         y = p_y;
-        alive = true;
     }
 };
 
 class State {
 private:
-    char grid[WIDTH][HEIGHT];
+    unsigned char grid[WIDTH][HEIGHT];
 
 public:
     int numPlayers;
@@ -65,14 +62,17 @@ public:
     long startTime;
     bool timeLimitReached;
     Player players[PLAYERS];
+    // this is a bitmask of living players
+    unsigned char alive;
 
     State() {
-        memset(grid, -1, WIDTH * HEIGHT * sizeof(char));
+        memset(grid, 0, WIDTH * HEIGHT * sizeof(char));
         maxDepth = 9;
         pruneMargin = 0;
         pruningEnabled = true;
         nodesSearched = 0;
         timeLimitEnabled = true;
+        alive = 255;
         resetTimer();
     }
 
@@ -98,34 +98,41 @@ public:
         if (x < 0 || y < 0 || x > MAX_X || y > MAX_Y) {
             return true;
         }
-        int player = grid[x][y];
-        return player != -1 && players[player].alive;
+        return grid[x][y] & alive;
     }
 
     inline void occupy(int x, int y, int player) {
         players[player].x = x;
         players[player].y = y;
 
-        grid[x][y] = player;
+        grid[x][y] |= (1 << player);
     }
 
-    inline void kill(int player) {
-        players[player].alive = false;
-    }
-
-    inline void revive(int player) {
-        players[player].alive = true;
+    inline void unoccupy(int x, int y, int player) {
+        grid[x][y] &= ~(1 << player);
     }
 
     inline void clear(int x, int y) {
-        grid[x][y] = -1;
+        grid[x][y] = 0;
     }
 
-    inline int x() {
+    inline void kill(int player) {
+        alive &= ~(1 << player);
+    }
+
+    inline void revive(int player) {
+        alive |= (1 << player);
+    }
+
+    inline bool isAlive(int player) const {
+        return alive & (1 << player);
+    }
+
+    inline int x() const {
         return players[thisPlayer].x;
     }
 
-    inline int y() {
+    inline int y() const {
         return players[thisPlayer].y;
     }
 
@@ -325,8 +332,8 @@ public:
         clear();
 
         for (int i = 0; i < state.numPlayers; i++) {
-            const Player* player = state.players + i;
-            if (player->alive) {
+            if (state.isAlive(i)) {
+                const Player* player = state.players + i;
                 grid[player->x][player->y].player = i;
                 grid[player->x][player->y].distance = 0;
                 addNode(player->x, player->y);
@@ -481,7 +488,7 @@ Scores calculateScores(RegionsLike& regions, const State& state) {
     return scores;
 };
 
-Scores calculateScores(Voronoi& voronoi, const State& state) {
+Scores calculateScores(Voronoi& voronoi, State& state) {
     int occupants[PLAYERS];
     int totalSize[PLAYERS];
     int maxSize = -1;
@@ -545,7 +552,7 @@ Scores minimax(Bounds& parentBounds, State& state, int turn, void* sc, void* dat
 
     int player = (state.thisPlayer + turn) % state.numPlayers;
 
-    if (!state.players[player].alive) {
+    if (!state.isAlive(player)) {
         // Skip dead players
         return scoreCalculator(bounds, state, turn + 1, (void*) scoreCalculator, data);
     }
@@ -562,7 +569,7 @@ Scores minimax(Bounds& parentBounds, State& state, int turn, void* sc, void* dat
         if (!state.occupied(x, y)) {
             state.occupy(x, y, player);
             Scores scores = scoreCalculator(bounds, state, turn + 1, (void*) scoreCalculator, data);
-            state.clear(x, y);
+            state.unoccupy(x, y, player);
             state.occupy(origX, origY, player); // restore player position
             scores.move = dirs[i];
             if (checkBounds(bounds, scores, state, player)) {
@@ -578,7 +585,7 @@ Scores minimax(Bounds& parentBounds, State& state, int turn, void* sc, void* dat
     }
 
     if (bestScores.scores[player] == INT_MIN) {
-        // All moves are illegal, so pass
+        // All moves are illegal - player dies and turn passes to the next player
         state.kill(player);
         Scores scores = scoreCalculator(bounds, state, turn + 1, (void*) scoreCalculator, data);
         state.revive(player);

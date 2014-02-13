@@ -1,6 +1,7 @@
 #include "tron.cc"
 
 #include "gtest/gtest.h"
+#include <fstream>
 
 TEST(Regions, ShouldFindSingleRegionWhenUnoccupied) {
     State state;
@@ -647,6 +648,26 @@ TEST(Bounding, DISABLED_Timing) {
     ASSERT_EQ(s1.scores[1], s2.scores[1]) << "Pruning should not affect the search result";
 }
 
+TEST(State, SimpleOccupy) {
+    State state;
+    ASSERT_FALSE(state.occupied(0, 0));
+    state.occupy(0, 0, 0);
+    ASSERT_TRUE(state.occupied(0, 0));
+    state.unoccupy(0, 0, 0);
+    ASSERT_FALSE(state.occupied(0, 0));
+}
+
+TEST(State, DoubleOccupancy) {
+    State state;
+    state.occupy(0, 0, 0);
+    state.occupy(0, 0, 1);
+    ASSERT_TRUE(state.occupied(0, 0));
+    state.unoccupy(0, 0, 0);
+    ASSERT_TRUE(state.occupied(0, 0));
+    state.unoccupy(0, 0, 1);
+    ASSERT_FALSE(state.occupied(0, 0));
+}
+
 TEST(State, DeadPlayersDoNotOccupySpace) {
     State state;
     state.occupy(4, 4, 0);
@@ -662,6 +683,23 @@ TEST(State, DeadPlayersDoNotOccupySpace) {
     ASSERT_FALSE(state.occupied(3, 3));
     ASSERT_TRUE(state.occupied(4, 4));
     ASSERT_TRUE(state.occupied(5, 5));
+}
+
+TEST(State, RevivingDeadPlayersPreservesOtherPlayers) {
+    State state;
+    state.occupy(0, 0, 0);
+    state.occupy(0, 0, 1);
+    ASSERT_TRUE(state.occupied(0, 0));
+    state.kill(1);
+    ASSERT_TRUE(state.occupied(0, 0));
+    state.kill(0);
+    ASSERT_FALSE(state.occupied(0, 0));
+    state.revive(0);
+    ASSERT_TRUE(state.occupied(0, 0));
+    state.unoccupy(0, 0, 0);
+    ASSERT_FALSE(state.occupied(0, 0));
+    state.revive(1);
+    ASSERT_TRUE(state.occupied(0, 0));
 }
 
 struct TestResults_PSDWNLM {
@@ -723,4 +761,60 @@ TEST(Minimax, DeadPlayerShouldNotGetTurn) {
     ASSERT_EQ(1, results.turn) << "Expected player 0 to miss their turn";
     ASSERT_FALSE(results.occupied) << "Expected player 0 to be missing";
     ASSERT_FALSE(state.occupied(1, 1)) << "Expected player 0 to be still missing after the call";
+}
+
+void readBoard(const char* filename, State& state) {
+    Player players[PLAYERS];
+    ifstream is(filename);
+    string line;
+    int y = 0;
+    while (getline(is, line)) {
+        for (int x = 0; x < line.size(); x++) {
+            char cell = line[x];
+            int player = cell - '0';
+            if (player >= 0 && player < PLAYERS) {
+                state.occupy(x, y, player);
+            } else {
+                player = cell - 'A';
+                if (player >= 0 && player < PLAYERS) {
+                    players[player].x = x;
+                    players[player].y = y;
+                }
+            }
+        }
+        y++;
+    }
+    is.close();
+    for (int i = 0; i < PLAYERS; i++) {
+        state.players[i] = players[i];
+    }
+}
+
+TEST(Util, BoardReader) {
+    State state;
+    readBoard("board1.txt", state);
+    ASSERT_TRUE(state.occupied(2, 7));
+    ASSERT_FALSE(state.occupied(3, 8));
+    ASSERT_EQ(5, state.players[1].x);
+    ASSERT_EQ(3, state.players[1].y);
+}
+
+TEST(Minimax, DISABLED_ZeroScoreWhenEnclosed) {
+    State state;
+    state.numPlayers = 4;
+    state.thisPlayer = 0;
+    state.maxDepth = 26;
+    state.timeLimitEnabled = false;
+    readBoard("board2.txt", state);
+
+    Voronoi voronoi;
+    Bounds bounds;
+
+    Scores scores = minimax(bounds, state, 0, (void*) voronoiRecursive, &voronoi);
+
+    cout << scores.scores[0] << endl;
+    cout << scores.scores[1] << endl;
+    cout << scores.scores[2] << endl;
+    cout << scores.scores[3] << endl;
+    cout << scores.move << endl;
 }
