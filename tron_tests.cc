@@ -617,3 +617,24 @@ TEST(Minimax, BothPlayersDieInThreeMovesButTheSecondShouldScore) {
     ASSERT_EQ(-1000, scores.scores[0]) << "First player loses";
     ASSERT_EQ(1002, scores.scores[1]) << "Second player wins";
 }
+
+TEST(State, ReadTurnShouldDetectDeath) {
+    istringstream is(
+        "2 0\n"
+        "0 0 0 0\n"
+        "4 4 4 4\n"
+        "2 0\n"
+        "0 0 0 1\n"
+        "4 4 4 4\n");
+
+    State state;
+    state.readTurn(is);
+
+    ASSERT_TRUE(state.isAlive(0));
+    ASSERT_TRUE(state.isAlive(1));
+
+    state.readTurn(is);
+
+    ASSERT_TRUE(state.isAlive(0));
+    ASSERT_FALSE(state.isAlive(1));
+}

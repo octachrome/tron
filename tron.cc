@@ -39,6 +39,8 @@ public:
     int y;
 
     Player() {
+        x = -1;
+        y = -1;
     }
 
     Player(int p_x, int p_y) {
@@ -144,9 +146,9 @@ public:
         return players[thisPlayer].y;
     }
 
-    inline void readTurn() {
-        cin >> numPlayers;
-        cin >> thisPlayer;
+    inline void readTurn(istream& is) {
+        is >> numPlayers;
+        is >> thisPlayer;
 
         for (int i = 0; i < numPlayers; i++) {
             int tailX;
@@ -154,12 +156,16 @@ public:
             int headX;
             int headY;
 
-            cin >> tailX;
-            cin >> tailY;
-            cin >> headX;
-            cin >> headY;
+            is >> tailX;
+            is >> tailY;
+            is >> headX;
+            is >> headY;
 
-            occupy(headX, headY, i);
+            if (players[i].x == headX && players[i].y == headY) {
+                kill(i);
+            } else {
+                occupy(headX, headY, i);
+            }
         } 
     }
 
@@ -446,7 +452,7 @@ void run() {
 
     while (1) {
         state.resetTimer();
-        state.readTurn();
+        state.readTurn(cin);
 
         // for (int i = 0; i < state.numPlayers; i++) {
         //     cerr << state.players[i].x << "," << state.players[i].y << endl;
