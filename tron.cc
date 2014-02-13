@@ -67,6 +67,8 @@ public:
     // this is a bitmask of living players
     unsigned char alive;
     int deathCount;
+    // a list of the players who have died, in chronological order of death
+    int deadList[PLAYERS];
 
     State() {
         memset(grid, 0, WIDTH * HEIGHT * sizeof(char));
@@ -122,7 +124,7 @@ public:
 
     inline void kill(int player) {
         alive &= ~(1 << player);
-        deathCount++;
+        deadList[deathCount++] = player;
     }
 
     inline void revive(int player) {
@@ -352,20 +354,41 @@ Scores calculateScores(Voronoi& voronoi, State& state) {
             maxSize = totalSize[region];
         }
     }
-    int bonus = -1;
-    for (int i = 0; i < state.numPlayers; i++) {
-        int region = voronoi.regionForPlayer(i);
-        if (occupants[region] == 1 && totalSize[i] == maxSize) {
-            // Bonus!
-            bonus = i;
-            break;
+
+    // penalise dead people. revive everyone and go through the deaths in order.
+    bool dead[PLAYERS] = {false, false, false, false};
+    int aliveCount = state.numPlayers;
+    for (int j = 0; j < state.deathCount; j++) {
+        aliveCount--;
+        int player = state.deadList[j];
+        scores.scores[player] -= 1000;
+        dead[player] = true;
+
+        // give the points to the players who were still alive at that point
+        for (int i = 0; i < state.numPlayers; i++) {
+            if (!dead[i]) {
+                scores.scores[i] += (1000 / aliveCount);
+            }
         }
     }
-    if (bonus >= 0) {
-        scores.scores[bonus] += 1000;
+
+    // if more than one person is still alive, but one of them has clearly won, award a bonus to the winner
+    if (aliveCount >= 2) {
+        int bonus = -1;
         for (int i = 0; i < state.numPlayers; i++) {
-            if (i != bonus) {
-                scores.scores[i] -= 1000 / (state.numPlayers - 1);
+            int region = voronoi.regionForPlayer(i);
+            if (occupants[region] == 1 && totalSize[i] == maxSize) {
+                // Bonus!
+                bonus = i;
+                break;
+            }
+        }
+        if (bonus >= 0) {
+            scores.scores[bonus] += 1000;
+            for (int i = 0; i < state.numPlayers; i++) {
+                if (i != bonus && !dead[i]) {
+                    scores.scores[i] -= 1000 / (aliveCount - 1);
+                }
             }
         }
     }

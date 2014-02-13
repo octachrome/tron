@@ -638,3 +638,51 @@ TEST(State, ReadTurnShouldDetectDeath) {
     ASSERT_TRUE(state.isAlive(0));
     ASSERT_FALSE(state.isAlive(1));
 }
+
+TEST(Minimax, ScoreBasedOnWhoDiesFirst) {
+    State state;
+    state.numPlayers = 3;
+    state.thisPlayer = 0;
+    state.maxDepth = 5;
+    state.timeLimitEnabled = false;
+
+    readBoard(state,
+        "000..111..222\n"
+        "0A0..1B1..2C2\n"
+        "000..1.1..2.2\n"
+        ".....111..2.2\n"
+        "..........222\n");
+
+    Voronoi voronoi;
+    Bounds bounds;
+
+    Scores scores = minimax(bounds, state, 0, (void*) voronoiRecursive, &voronoi);
+
+    ASSERT_EQ(-1000, scores.scores[0]) << "First player in third place";
+    ASSERT_EQ(-500, scores.scores[1]) << "Second player in second placce";
+    ASSERT_EQ(1501, scores.scores[2]) << "Third player in first place";
+}
+
+TEST(Minimax, ScoreFairlyWithOneDeathAndAClearWinner) {
+    State state;
+    state.numPlayers = 3;
+    state.thisPlayer = 0;
+    state.maxDepth = 1;
+    state.timeLimitEnabled = false;
+
+    readBoard(state,
+        "000..111..222\n"
+        "0A0..1B1..2C2\n"
+        "000..1.1..2.2\n"
+        ".....111..2.2\n"
+        "..........222\n");
+
+    Voronoi voronoi;
+    Bounds bounds;
+
+    Scores scores = minimax(bounds, state, 0, (void*) voronoiRecursive, &voronoi);
+
+    ASSERT_EQ(-1000, scores.scores[0]) << "First player in third place";
+    ASSERT_EQ(-499, scores.scores[1]) << "Second player in second placce";
+    ASSERT_EQ(1502, scores.scores[2]) << "Third player in first place";
+}
