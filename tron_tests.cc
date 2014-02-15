@@ -3,8 +3,19 @@
 #include "gtest/gtest.h"
 #include <fstream>
 
+Scores minimax(Bounds& parentBounds, State& state, int turn, void* sc, void* data) {
+    Scores scores;
+    minimax(scores, parentBounds, state, turn, sc, data);
+    return scores;
+}
 
-Scores calculateScores_MaximiseScore(Bounds& bounds, State& state, int turn, void* dummy, void* data) {
+Scores calculateScores(Voronoi& voronoi, State& state) {
+    Scores scores;
+    calculateScores(scores, voronoi, state);
+    return scores;
+}
+
+Scores scoreCalculator_MaximiseScore(Bounds& bounds, State& state, int turn, void* dummy, void* data) {
     Scores scores;
     scores.scores[1] = 1;
     if (state.players[0].x == 11) {
@@ -28,7 +39,7 @@ TEST(Scoring, MaximiseScore) {
 
     Bounds bounds;
 
-    Scores scores = minimax(bounds, state, 0, (void*) calculateScores_MaximiseScore, 0);
+    Scores scores = minimax(bounds, state, 0, (void*) scoreCalculator_MaximiseScore, 0);
     ASSERT_EQ(DOWN, scores.move);
 }
 
@@ -229,14 +240,14 @@ TEST(Scoring, Dead) {
     ASSERT_EQ(WIDTH * HEIGHT - 1 + 1000, scores.scores[1]);
 }
 
-class CalculateScoresMock {
+class ScoreCalculatorMock {
 private:
     int expectedCalls;
     int calls;
     Scores scores[100];
 
 public:
-    CalculateScoresMock() {
+    ScoreCalculatorMock() {
         expectedCalls = 0;
         calls = 0;
     }
@@ -261,8 +272,8 @@ public:
     }
 };
 
-Scores mockCalculateScores(Bounds& bounds, State& state, int turn, void* dummy, void* data) {
-    CalculateScoresMock* mock = (CalculateScoresMock*) data;
+Scores mockScoreCalculator(Bounds& bounds, State& state, int turn, void* dummy, void* data) {
+    ScoreCalculatorMock* mock = (ScoreCalculatorMock*) data;
     return mock->call();
 }
 
@@ -274,13 +285,13 @@ TEST(Bounding, ShouldPruneWhenBoundExceededByFirstChild) {
     state.occupy(5, 5, 0);
     state.occupy(15, 15, 1);
 
-    CalculateScoresMock mock;
+    ScoreCalculatorMock mock;
     mock.expectCall(40, 100);
 
     Bounds bounds;
     bounds.bounds[0] = 50;
 
-    Scores scores = minimax(bounds, state, 1, (void*) mockCalculateScores, &mock);
+    Scores scores = minimax(bounds, state, 1, (void*) mockScoreCalculator, &mock);
     ASSERT_EQ(40, scores.scores[0]);
     ASSERT_EQ(100, scores.scores[1]);
 }
@@ -413,7 +424,7 @@ struct TestResults_PSDWNLM {
     bool occupied;
 };
 
-Scores calculateScores_PSDWNLM(Bounds& bounds, State& state, int turn, void* dummy, void* data) {
+Scores scoreCalculator_PSDWNLM(Bounds& bounds, State& state, int turn, void* dummy, void* data) {
     TestResults_PSDWNLM* results = (TestResults_PSDWNLM*) data;
     results->calls++;
     results->turn = turn;
@@ -438,7 +449,7 @@ TEST(Minimax, PlayerShouldDieWhenNoLegalMoves) {
     TestResults_PSDWNLM results;
     results.calls = 0;
 
-    minimax(bounds, state, 0, (void*) calculateScores_PSDWNLM, &results);
+    minimax(bounds, state, 0, (void*) scoreCalculator_PSDWNLM, &results);
 
     ASSERT_EQ(1, results.calls) << "Expected one call";
     ASSERT_EQ(1, results.turn) << "Expected player 0 to miss their turn";
@@ -460,7 +471,7 @@ TEST(Minimax, DeadPlayerShouldNotGetTurn) {
     TestResults_PSDWNLM results;
     results.calls = 0;
 
-    minimax(bounds, state, 0, (void*) calculateScores_PSDWNLM, &results);
+    minimax(bounds, state, 0, (void*) scoreCalculator_PSDWNLM, &results);
 
     ASSERT_EQ(1, results.calls) << "Expected one call";
     ASSERT_EQ(1, results.turn) << "Expected player 0 to miss their turn";
@@ -685,4 +696,121 @@ TEST(Minimax, ScoreFairlyWithOneDeathAndAClearWinner) {
     ASSERT_EQ(-1000, scores.scores[0]) << "First player in third place";
     ASSERT_EQ(-499, scores.scores[1]) << "Second player in second placce";
     ASSERT_EQ(1502, scores.scores[2]) << "Third player in first place";
+}
+
+TEST(Minimax, BadDecision1) {
+    State state;
+    state.numPlayers = 4;
+    state.thisPlayer = 0;
+    state.maxDepth = 8;
+    state.pruneMargin = 1;
+    state.pruningEnabled = false;
+    state.timeLimitEnabled = false;
+
+    readBoard(state,
+        "....*....*....*....*....*....*\n"
+        "....*....*.11.*....*....*....*\n"
+        "..2222...*.1..*....*....*....*\n"
+        "....*2...*.1..*....*....*....*\n"
+        "....*22..*.1..*....*....*....*\n"
+        "....*.2..*.11.*....*....*....*\n"
+        "....*.2222..1.*....*....*..3D*\n"
+        "....*....2..11*....*....*..33*\n"
+        "....*....2...11.3333333333333*\n"
+        "....*....2....1133.*....*....*\n"
+        "....*....22..111.3.*....*0000A\n"
+        "....*....*2..1*..3.*....*0000*\n"
+        "....*....*2..1*..3.*...000000*\n"
+        "....*....*2..1*..333...00000.*\n"
+        "....*....*2..1*....33333*00000\n"
+        "....*....*2..1*....*....*00000\n"
+        "....*....*2..1*....*....*....*\n"
+        "....*....*2.11*....*....*....*\n"
+        "....*....C2211B....*....*....*\n"
+        "....*....22211*....*....*....*\n");
+
+    Voronoi voronoi;
+    Bounds bounds;
+
+    Scores scores = minimax(bounds, state, 0, (void*) voronoiRecursive, &voronoi);
+
+    cout << scores.scores[0] << endl;
+    cout << scores.scores[1] << endl;
+    cout << scores.scores[2] << endl;
+    cout << scores.scores[3] << endl;
+    cout << scores.move << endl;
+    cout << scores.moves << endl;
+}
+
+void playTurn(State& state, const char* input) {
+    istringstream is(input);
+    state.readTurn(is);
+}
+
+TEST(Minimax, BadDecision2) {
+    State state;
+    state.numPlayers = 4;
+    state.thisPlayer = 0;
+    state.maxDepth = 8;
+    state.pruningEnabled = false;
+    state.timeLimitEnabled = false;
+
+    readBoard(state,
+        "....*....*....*....*....*....*\n"
+        "....*....3333.*....*....*....*\n"
+        "..3333..33333.*....*....*...2*\n"
+        "..3333..333222*....*....*...2*\n"
+        "..3333.3333222*....*222.*...2*\n"
+        "..333..333322.*....*222.....2*\n"
+        "..333..333322.*....*.2222...2*\n"
+        "..33...3..322.*....*.2222...2*\n"
+        ".A333.33..32222........22...2*\n"
+        ".0333.3...322.2....*...22..22*\n"
+        ".0333D3...3.222....*...22.22..\n"
+        ".033333..*32222222222222222..*\n"
+        ".0.3333..*3C2222222222.......*\n"
+        ".003*.3..*332222222222......00\n"
+        ".003333..*..000000000000000000\n"
+        ".00330000000000000000000000000\n"
+        ".00330...*....*....*....*....*\n"
+        ".003300000000000...*....*....*\n"
+        ".003300000000000...*....*....*\n"
+        ".00000........*....*....*....*\n");
+
+    Voronoi voronoi;
+    Bounds bounds;
+
+    // player 1 is dead already
+    state.players[1].x = 0;
+    state.players[1].y = 0;
+
+    playTurn(state,
+        "4 0\n"
+        "12 14 1 7\n"
+        "0 0 0 0\n"
+        "28 2 11 12\n"
+        "11 13 5 9\n");
+
+    Scores scores = minimax(bounds, state, 0, (void*) voronoiRecursive, &voronoi);
+
+    cout << scores.scores[0] << endl;
+    cout << scores.scores[1] << endl;
+    cout << scores.scores[2] << endl;
+    cout << scores.scores[3] << endl;
+    cout << scores.move << endl;
+    cout << scores.moves << endl;
+}
+
+TEST(Minimax, KillingSamePlayerRepeatedlyShouldDoNothing) {
+    State state;
+    state.numPlayers = 3;
+    state.thisPlayer = 0;
+
+    state.kill(1);
+    state.kill(1);
+    state.kill(1);
+    state.kill(1);
+
+    ASSERT_EQ(1, state.deathCount);
+    ASSERT_EQ(1, state.deadList[0]);
 }

@@ -7,13 +7,16 @@
 #include <climits>
 #include <ctime>
 
+#ifdef TRON_TESTS
+#define TRON_TRACE
+#endif
+
 #define WIDTH  30
 #define HEIGHT 20
 #define MAX_X  (WIDTH - 1)
 #define MAX_Y  (HEIGHT - 1)
 #define PLAYERS 4
 #define TIME_LIMIT 90
-#define LOWER_TIME_LIMIT 60
 
 using namespace std;
 
@@ -21,6 +24,7 @@ const char* RIGHT = "RIGHT";
 const char* LEFT = "LEFT";
 const char* DOWN = "DOWN";
 const char* UP = "UP";
+const char* GULP = "GULP";
 
 const char* const dirs[] = {RIGHT, LEFT, DOWN, UP};
 
@@ -72,7 +76,7 @@ public:
 
     State() {
         memset(grid, 0, WIDTH * HEIGHT * sizeof(char));
-        maxDepth = 9;
+        maxDepth = 14;
         pruneMargin = 0;
         pruningEnabled = true;
         nodesSearched = 0;
@@ -124,6 +128,12 @@ public:
 
     inline void kill(int player) {
         alive &= ~(1 << player);
+        for (int i = 0; i < deathCount; i++) {
+            if (deadList[i] == player) {
+                // already dead
+                return;
+            }
+        }
         deadList[deathCount++] = player;
     }
 
@@ -164,6 +174,7 @@ public:
             is >> headY;
 
             if (players[i].x == headX && players[i].y == headY) {
+                // Player is already dead
                 kill(i);
             } else {
                 occupy(headX, headY, i);
@@ -182,14 +193,14 @@ public:
                     }
                 }
                 if (player >= 0) {
-                    cout << player;
+                    cerr << player;
                 } else if (occupied(x, y)) {
-                    cout << '#';
+                    cerr << '#';
                 } else {
-                    cout << ' ';
+                    cerr << ' ';
                 }
             }
-            cout << endl;
+            cerr << endl;
         }
     }
 };
@@ -282,15 +293,15 @@ public:
     }
 
     void print() {
-        cout << hex;
+        cerr << hex;
         for (int y = 0; y <= MAX_Y; y++) {
             for (int x = 0; x <= MAX_X; x++) {
                 Vor vor = get(x, y);
-                cout << setw(3) << int(vor.player);
+                cerr << setw(3) << int(vor.player);
             }
-            cout << endl;
+            cerr << endl;
         }
-        cout << dec;
+        cerr << dec;
     }
 
     int regionForPlayer(int player) {
@@ -302,11 +313,27 @@ class Scores {
 public:
     int scores[PLAYERS];
     const char* move;
+#ifdef TRON_TRACE
+    char moves[30];
+#endif
+
+    inline void print() const {
+        for (int i = 0; i < PLAYERS; i++) {
+            if (i != 0) {
+                cerr << " / ";
+            }
+            cerr << scores[i];
+        }
+        cerr << endl;
+    }
 };
 
 class Bounds {
 public:
     int bounds[PLAYERS];
+#ifdef TRON_TRACE
+    char moves[PLAYERS][30];
+#endif
 
     Bounds() {
         for (int i = 0; i < PLAYERS; i++) {
@@ -326,11 +353,10 @@ public:
     }
 };
 
-Scores calculateScores(Voronoi& voronoi, State& state) {
+void calculateScores(Scores& scores, Voronoi& voronoi, State& state) {
     int occupants[PLAYERS];
     int totalSize[PLAYERS];
     int maxSize = -1;
-    Scores scores;
 
     voronoi.calculate(state);
 
@@ -365,9 +391,11 @@ Scores calculateScores(Voronoi& voronoi, State& state) {
         dead[player] = true;
 
         // give the points to the players who were still alive at that point
-        for (int i = 0; i < state.numPlayers; i++) {
-            if (!dead[i]) {
-                scores.scores[i] += (1000 / aliveCount);
+        if (aliveCount > 0) {
+            for (int i = 0; i < state.numPlayers; i++) {
+                if (!dead[i]) {
+                    scores.scores[i] += (1000 / aliveCount);
+                }
             }
         }
     }
@@ -392,10 +420,9 @@ Scores calculateScores(Voronoi& voronoi, State& state) {
             }
         }
     }
-    return scores;
 }
 
-typedef Scores (*ScoreCalculator)(Bounds& bounds, State& state, int turn, void* scoreCalculator, void* data);
+typedef void (*ScoreCalculator)(Scores& scores, Bounds& bounds, State& state, int turn, void* scoreCalculator, void* data);
 
 inline bool checkBounds(Bounds& bounds, Scores& scores, State& state, int player) {
     if (!state.pruningEnabled) {
@@ -403,13 +430,17 @@ inline bool checkBounds(Bounds& bounds, Scores& scores, State& state, int player
     }
     for (int i = 0; i < state.numPlayers; i++) {
         if (i != player && scores.scores[i] + state.pruneMargin <= bounds.bounds[i]) {
+#ifdef TRON_TRACE
+            cerr << "Score " << scores.scores[i] << " breaks bound " << bounds.bounds[i] << " for player " << i
+                << " from " << bounds.moves[i] << endl;
+#endif
             return true;
         }
     }
     return false;
 }
 
-Scores minimax(Bounds& parentBounds, State& state, int turn, void* sc, void* data) {
+void minimax(Scores& scores, Bounds& parentBounds, State& state, int turn, void* sc, void* data) {
     state.nodesSearched++;
     Bounds bounds = parentBounds;
     ScoreCalculator scoreCalculator = (ScoreCalculator) sc;
@@ -418,7 +449,12 @@ Scores minimax(Bounds& parentBounds, State& state, int turn, void* sc, void* dat
 
     // Skip dead players, and fast forward to scoring when only one player left alive
     if (!state.isAlive(player) || state.livingCount() == 1) {
-        return scoreCalculator(bounds, state, turn + 1, (void*) scoreCalculator, data);
+#ifdef TRON_TRACE
+        scores.moves[turn] = 'X';
+        scores.moves[turn + 1] = 0;
+#endif
+        scoreCalculator(scores, bounds, state, turn + 1, (void*) scoreCalculator, data);
+        return;
     }
 
     Scores bestScores;
@@ -431,18 +467,28 @@ Scores minimax(Bounds& parentBounds, State& state, int turn, void* sc, void* dat
         int x = origX + xOffsets[i];
         int y = origY + yOffsets[i];
         if (!state.occupied(x, y)) {
+#ifdef TRON_TRACE
+            scores.moves[turn] = dirs[i][0];
+            scores.moves[turn + 1] = 0;
+#endif
             state.occupy(x, y, player);
-            Scores scores = scoreCalculator(bounds, state, turn + 1, (void*) scoreCalculator, data);
+            scoreCalculator(scores, bounds, state, turn + 1, (void*) scoreCalculator, data);
             state.unoccupy(x, y, player);
             state.occupy(origX, origY, player); // restore player position
             scores.move = dirs[i];
             if (checkBounds(bounds, scores, state, player)) {
-                return scores;
+#ifdef TRON_TRACE
+                cerr << "Pruned at " << scores.moves << ", ply " << turn << endl;
+#endif
+                return;
             }
             if (scores.scores[player] > bestScores.scores[player]) {
                 bestScores = scores;
                 if (state.pruningEnabled) {
                     bounds.bounds[player] = scores.scores[player];
+#ifdef TRON_TRACE
+                    strcpy(bounds.moves[player], scores.moves);
+#endif
                 }
             }
         }
@@ -450,20 +496,24 @@ Scores minimax(Bounds& parentBounds, State& state, int turn, void* sc, void* dat
 
     if (bestScores.scores[player] == INT_MIN) {
         // All moves are illegal - player dies and turn passes to the next player
+#ifdef TRON_TRACE
+        scores.moves[turn] = 'G';
+        scores.moves[turn + 1] = 0;
+#endif
         state.kill(player);
-        Scores scores = scoreCalculator(bounds, state, turn + 1, (void*) scoreCalculator, data);
+        scoreCalculator(scores, bounds, state, turn + 1, (void*) scoreCalculator, data);
         state.revive(player);
-        return scores;
+        scores.move = GULP;
     } else {
-        return bestScores;
+        scores = bestScores;
     }
 }
 
-Scores voronoiRecursive(Bounds& bounds, State& state, int turn, void* sc, void* data) {
+void voronoiRecursive(Scores& scores, Bounds& bounds, State& state, int turn, void* sc, void* data) {
     if (turn >= state.maxDepth || state.isTimeLimitReached()) {
-        return calculateScores(*((Voronoi*)data), state);
+        calculateScores(scores, *((Voronoi*)data), state);
     } else {
-        return minimax(bounds, state, turn, sc, data);
+        minimax(scores, bounds, state, turn, sc, data);
     }
 }
 
@@ -474,6 +524,7 @@ void run() {
     Bounds bounds;
 
     while (1) {
+        // TODO bounds = Bounds();
         state.resetTimer();
         state.readTurn(cin);
 
@@ -482,7 +533,7 @@ void run() {
         // }
 
         long start = millis();
-        scores = minimax(bounds, state, 0, (void*) voronoiRecursive, &voronoi);
+        minimax(scores, bounds, state, 0, (void*) voronoiRecursive, &voronoi);
         long elapsed = millis() - start;
         cerr << elapsed << "ms" << endl;
 
@@ -498,8 +549,6 @@ void run() {
         if (state.timeLimitEnabled) {
             if (state.isTimeLimitReached()) {
                 state.maxDepth--;
-            } else if (millis() - state.startTime <= LOWER_TIME_LIMIT) {
-                state.maxDepth++;
             }
         }
 
