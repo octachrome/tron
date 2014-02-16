@@ -1,3 +1,4 @@
+//#define TRON_TRACE
 #include "tron.cc"
 
 #include "gtest/gtest.h"
@@ -704,7 +705,6 @@ TEST(Minimax, BadDecision1) {
     state.thisPlayer = 0;
     state.maxDepth = 8;
     state.pruneMargin = 1;
-    state.pruningEnabled = false;
     state.timeLimitEnabled = false;
 
     readBoard(state,
@@ -732,14 +732,16 @@ TEST(Minimax, BadDecision1) {
     Voronoi voronoi;
     Bounds bounds;
 
-    Scores scores = minimax(bounds, state, 0, (void*) voronoiRecursive, &voronoi);
+    state.pruningEnabled = false;
+    Scores scores1 = minimax(bounds, state, 0, (void*) voronoiRecursive, &voronoi);
 
-    cout << scores.scores[0] << endl;
-    cout << scores.scores[1] << endl;
-    cout << scores.scores[2] << endl;
-    cout << scores.scores[3] << endl;
-    cout << scores.move << endl;
-    cout << scores.moves << endl;
+    state.pruningEnabled = true;
+    Scores scores2 = minimax(bounds, state, 0, (void*) voronoiRecursive, &voronoi);
+
+    ASSERT_EQ(scores1.scores[0], scores2.scores[0]) << "Expected same result for p0 with and without pruning";
+    ASSERT_EQ(scores1.scores[1], scores2.scores[1]) << "Expected same result for p0 with and without pruning";
+    ASSERT_EQ(scores1.scores[2], scores2.scores[2]) << "Expected same result for p0 with and without pruning";
+    ASSERT_EQ(scores1.scores[3], scores2.scores[3]) << "Expected same result for p0 with and without pruning";
 }
 
 void playTurn(State& state, const char* input) {
@@ -793,12 +795,12 @@ TEST(Minimax, BadDecision2) {
 
     Scores scores = minimax(bounds, state, 0, (void*) voronoiRecursive, &voronoi);
 
-    cout << scores.scores[0] << endl;
-    cout << scores.scores[1] << endl;
-    cout << scores.scores[2] << endl;
-    cout << scores.scores[3] << endl;
-    cout << scores.move << endl;
-    cout << scores.moves << endl;
+    // cout << scores.scores[0] << endl;
+    // cout << scores.scores[1] << endl;
+    // cout << scores.scores[2] << endl;
+    // cout << scores.scores[3] << endl;
+    // cout << scores.move << endl;
+    // cout << scores.moves << endl;
 }
 
 TEST(Minimax, KillingSamePlayerRepeatedlyShouldDoNothing) {
@@ -813,4 +815,77 @@ TEST(Minimax, KillingSamePlayerRepeatedlyShouldDoNothing) {
 
     ASSERT_EQ(1, state.deathCount);
     ASSERT_EQ(1, state.deadList[0]);
+}
+
+TEST(Scoring, ShouldDetectOpponentsInSameRegion) {
+    State state;
+    state.numPlayers = 3;
+    state.thisPlayer = 0;
+
+    readBoard(state,
+        "....*1...*....*..0.*....*....*\n"
+        "....*1...*....*..0.*....*....*\n"
+        "....*B...*....*..0.*....*....*\n"
+        "....*....*....*..0.*....*....*\n"
+        "....*....*....*..0.*....*....*\n"
+        "....*....*....*..0.*....*....*\n"
+        "....*....*....*..0.*....*....*\n"
+        "....*....*....*..0.*....*....*\n"
+        "....*....*....*..0.*....*....*\n"
+        "....*....*....*..0.*....*....*\n"
+        "....*....*....*..0.*....*....*\n"
+        "....*....*....*..0.*....*....*\n"
+        "....*....*....*..0.*....*....*\n"
+        "....*....*....*..0.*....*....*\n"
+        "....*....*....*..0.*....*....*\n"
+        "....*....*....*..0.*....*....*\n"
+        "....*....*....*..0.*....*....*\n"
+        "....*C...*....*..0.*....*....*\n"
+        "....*2...*....*..0.*....*....*\n"
+        "....*2...*....*..000A...*....*\n");
+
+    Voronoi voronoi;
+
+    Scores scores = calculateScores(voronoi, state);
+    ASSERT_TRUE(scores.areOpponents(1, 2)) << "Players 1 and 2 are opponents";
+    ASSERT_TRUE(scores.areOpponents(2, 1)) << "Players 2 and 1 are opponents";
+    ASSERT_FALSE(scores.areOpponents(0, 1)) << "Players 0 and 1 are not opponents";
+    ASSERT_FALSE(scores.areOpponents(1, 0)) << "Players 1 and 0 are not opponents";
+    ASSERT_FALSE(scores.areOpponents(0, 2)) << "Players 0 and 2 are not opponents";
+    ASSERT_FALSE(scores.areOpponents(2, 0)) << "Players 2 and 0 are not opponents";
+}
+
+TEST(Scoring, PlayerWhoGainsLargestRegionIsEveryonesOpponent) {
+    State state;
+    state.numPlayers = 3;
+    state.thisPlayer = 0;
+
+    readBoard(state,
+        "....*....*....*..0.*....*....*\n"
+        "....*....*....*..0.*....*....*\n"
+        "....*....*....*..0.*....*....*\n"
+        "....*....*....*..0.*....*....*\n"
+        "....*...B*....*..0.*....*....*\n"
+        "....*...1*....*..0.*....*....*\n"
+        "....*...1111111110.*....*....*\n"
+        "111111111111111110.*....*....*\n"
+        "....*....*....*..0.*....*....*\n"
+        "....*....*....*..0.*....*....*\n"
+        "....*....*....*..0.*....*....*\n"
+        "....*....*....*..0.*....*....*\n"
+        "....*....*....*..0.*....*....*\n"
+        "....*....*....*..0.*....*....*\n"
+        "....*....*....*..0.*....*....*\n"
+        "....*....*....*..0.*....*....*\n"
+        "....*....*....*..0.*....*....*\n"
+        "....*C...*....*..0.*....*....*\n"
+        "....*2...*....*..0.*....*....*\n"
+        "....*2...*....*..000A...*....*\n");
+
+    Voronoi voronoi;
+
+    Scores scores = calculateScores(voronoi, state);
+    ASSERT_FALSE(scores.areOpponents(1, 2)) << "Players 1 and 2 are not opponents";
+    ASSERT_FALSE(scores.areOpponents(2, 1)) << "Players 2 and 1 are not opponents";
+    ASSERT_TRUE(scores.areOpponents(0, 1)) << "Players 0 and 1 are opponents";
 }

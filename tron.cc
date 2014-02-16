@@ -7,10 +7,6 @@
 #include <climits>
 #include <ctime>
 
-#ifdef TRON_TESTS
-#define TRON_TRACE
-#endif
-
 #define WIDTH  30
 #define HEIGHT 20
 #define MAX_X  (WIDTH - 1)
@@ -284,11 +280,11 @@ public:
         }
     }
 
-    int playerRegionSize(int player) {
+    inline int playerRegionSize(int player) {
         return sizes[player];
     }
 
-    Vor& get(int x, int y) {
+    inline Vor& get(int x, int y) {
         return grid[x][y];
     }
 
@@ -304,7 +300,7 @@ public:
         cerr << dec;
     }
 
-    int regionForPlayer(int player) {
+    inline int regionForPlayer(int player) {
         return regions[player];
     }
 };
@@ -312,10 +308,25 @@ public:
 class Scores {
 public:
     int scores[PLAYERS];
+    int regions[PLAYERS];
+    unsigned int opponents;
     const char* move;
 #ifdef TRON_TRACE
     char moves[30];
 #endif
+
+    inline void clearOpponents() {
+        opponents = 0;
+    }
+
+    inline void setOpponents(int playerA, int playerB) {
+        opponents |= (playerA * 4 + playerB);
+        opponents |= (playerB * 4 + playerA);
+    }
+
+    inline bool areOpponents(int playerA, int playerB) const {
+        return regions[playerA] == regions[playerB] || opponents & (1 << (playerA * 4 + playerB));
+    }
 
     inline void print() const {
         for (int i = 0; i < PLAYERS; i++) {
@@ -356,9 +367,16 @@ public:
 void calculateScores(Scores& scores, Voronoi& voronoi, State& state) {
     int occupants[PLAYERS];
     int totalSize[PLAYERS];
+    int playersByRegion[PLAYERS];
     int maxSize = -1;
 
     voronoi.calculate(state);
+
+    scores.clearOpponents();
+
+    for (int i = 0; i < state.numPlayers; i++) {
+        scores.regions[i] = voronoi.regionForPlayer(i);
+    }
 
     for (int i = 0; i < state.numPlayers; i++) {
         occupants[i] = 0;
@@ -416,6 +434,7 @@ void calculateScores(Scores& scores, Voronoi& voronoi, State& state) {
             for (int i = 0; i < state.numPlayers; i++) {
                 if (i != bonus && !dead[i]) {
                     scores.scores[i] -= 1000 / (aliveCount - 1);
+                    scores.setOpponents(i, bonus);
                 }
             }
         }
@@ -429,10 +448,12 @@ inline bool checkBounds(Bounds& bounds, Scores& scores, State& state, int player
         return false;
     }
     for (int i = 0; i < state.numPlayers; i++) {
-        if (i != player && scores.scores[i] + state.pruneMargin <= bounds.bounds[i]) {
+        if (i != player && scores.scores[i] + state.pruneMargin <= bounds.bounds[i]
+            && scores.areOpponents(player, i)) {
 #ifdef TRON_TRACE
             cerr << "Score " << scores.scores[i] << " breaks bound " << bounds.bounds[i] << " for player " << i
                 << " from " << bounds.moves[i] << endl;
+            scores.print();
 #endif
             return true;
         }
@@ -478,7 +499,12 @@ void minimax(Scores& scores, Bounds& parentBounds, State& state, int turn, void*
             scores.move = dirs[i];
             if (checkBounds(bounds, scores, state, player)) {
 #ifdef TRON_TRACE
-                cerr << "Pruned at " << scores.moves << ", ply " << turn << endl;
+                cerr << "Pruned at " << scores.moves << endl;
+                cerr << "          ";
+                for (int j = 0; j < turn; j++) {
+                    cerr << " ";
+                }
+                cerr << "^" << endl;
 #endif
                 return;
             }
@@ -524,7 +550,6 @@ void run() {
     Bounds bounds;
 
     while (1) {
-        // TODO bounds = Bounds();
         state.resetTimer();
         state.readTurn(cin);
 
