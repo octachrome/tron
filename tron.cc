@@ -335,6 +335,10 @@ public:
             }
             cerr << scores[i];
         }
+        cerr << " / " << move;
+#ifdef TRON_TRACE
+        cerr << " / " << moves;
+#endif
         cerr << endl;
     }
 };

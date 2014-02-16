@@ -1,4 +1,4 @@
-//#define TRON_TRACE
+#define TRON_TRACE
 #include "tron.cc"
 
 #include "gtest/gtest.h"
@@ -888,4 +888,96 @@ TEST(Scoring, PlayerWhoGainsLargestRegionIsEveryonesOpponent) {
     ASSERT_FALSE(scores.areOpponents(1, 2)) << "Players 1 and 2 are not opponents";
     ASSERT_FALSE(scores.areOpponents(2, 1)) << "Players 2 and 1 are not opponents";
     ASSERT_TRUE(scores.areOpponents(0, 1)) << "Players 0 and 1 are opponents";
+}
+
+class GameSim {
+public:
+    long maxTime;
+    State states[PLAYERS];
+    Scores scores;
+    Voronoi voronoi;
+    Bounds bounds;
+    int x[PLAYERS];
+    int y[PLAYERS];
+    int numPlayers;
+    int turn;
+
+    GameSim(int* sx, int* sy, int p_numPlayers, bool pruningEnabled) {
+        maxTime = -1;
+        numPlayers = p_numPlayers;
+        turn = 0;
+
+        for (int i = 0; i < numPlayers; i++) {
+            x[i] = sx[i];
+            y[i] = sy[i];
+            states[i].timeLimitEnabled = false;
+            states[i].pruningEnabled = pruningEnabled;
+            states[i].pruneMargin = 1;
+            states[i].maxDepth = 8;
+        }
+    }
+
+    void playTurn() {
+        int i = turn % numPlayers;
+        stringstream ss;
+        ss << numPlayers << " " << i << endl;
+        for (int k = 0; k < numPlayers; k++) {
+            ss << "0 0 " << x[k] << " " << y[k] << endl;
+        }
+        long start = millis();
+        states[i].readTurn(ss);
+        minimax(scores, bounds, states[i], 0, (void*) voronoiRecursive, &voronoi);
+        long duration = millis() - start;
+        if (duration > maxTime) {
+            maxTime = duration;
+        }
+        if (scores.move[0] == 'L') {
+            x[i]--;
+        } else if (scores.move[0] == 'R') {
+            x[i]++;
+        } else if (scores.move[0] == 'U') {
+            y[i]--;
+        } else if (scores.move[0] == 'D') {
+            y[i]++;
+        } else {
+            cerr << "Illegal move " << scores.move << " for player " << i << endl;
+        }
+        turn++;
+    }
+};
+
+TEST(Pruning, PlaySelf) {
+    int numPlayers = 3;
+    int moves = 100;
+
+    int sx[PLAYERS];
+    int sy[PLAYERS];
+
+    // srand(time(0));
+
+    for (int i = 0; i < numPlayers; i++) {
+        sx[i] = rand() % WIDTH;
+        sy[i] = rand() % HEIGHT;
+    }
+
+    GameSim pruningOff(sx, sy, numPlayers, false);
+    GameSim pruningOn(sx, sy, numPlayers, true);
+
+    for (int j = 0; j < 100; j++) {
+        pruningOff.playTurn();
+        pruningOn.playTurn();
+
+        if (strcmp(pruningOff.scores.move, pruningOn.scores.move) != 0) {
+            cerr << "Difference at turn " << j << ", p" << (j % numPlayers) << endl;
+            pruningOff.scores.print();
+            pruningOn.scores.print();
+            break;
+        }
+    }
+
+    cerr << "Max move time: " << pruningOff.maxTime << "ms" << endl;
+    cerr << "Max move time: " << pruningOn.maxTime << "ms" << endl;
+
+    // pruningOff.states[0].print();
+    // pruningOn.states[0].print();
 }
