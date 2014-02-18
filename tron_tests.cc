@@ -252,8 +252,12 @@ TEST(Bounding, ShouldPruneWhenBoundExceededByFirstChild) {
     state.occupy(5, 5, 0);
     state.occupy(15, 15, 1);
 
+    Scores s(40, 100);
+    s.regions[0] = 0;
+    s.regions[0] = 0;
+
     ScoreCalculatorMock mock;
-    mock.expectCall(Scores(40, 100));
+    mock.expectCall(s);
 
     Bounds bounds;
     bounds.bounds[0] = 50;
@@ -998,10 +1002,15 @@ TEST(Bounding, ShouldNotPruneWhenBothAreLosers) {
     state.numPlayers = 3;
     state.pruningEnabled = true;
 
+    // Player 2 wins by occupying region 2 alone
     Scores scores;
     scores.scores[0] = -100;
     scores.scores[1] = -200;
     scores.scores[2] = 300;
+    scores.regions[0] = 0;
+    scores.regions[1] = 0;
+    scores.regions[2] = 1;
+
     scores.setLoser(0);
     scores.setLoser(1);
 
@@ -1015,4 +1024,96 @@ TEST(Bounding, ShouldNotPruneWhenBothAreLosers) {
 
     ASSERT_FALSE(checkBounds(bounds, scores, state, 0)) << "Expected player 1's bound not to cause pruning: "
         "a better move for player 0 could cause both players to survive";
+}
+
+TEST(Scoring, ShouldCalculateRegionsForPlayers) {
+    State state;
+    readBoard(state,
+        "....*....*....*..A.*....*....*\n"
+        "....*....*....*....*....*....*\n"
+        "000000000000000000000000000000\n"
+        "....*....*....*....*....*....*\n"
+        "....*....*....*..B.*....*....*\n"
+        "....*....*....*....*....*....*\n"
+        "....*....*....*..C.*....*....*\n"
+        "....*....*....*....*....*....*\n");
+
+    Voronoi voronoi;
+
+    Scores scores = calculateScores(voronoi, state);
+
+    ASSERT_NE(scores.regions[0], scores.regions[1]) << "Expected players 0 and 1 to be in different regions";
+    ASSERT_EQ(scores.regions[1], scores.regions[2]) << "Expected players 1 and 2 to be in same region";
+}
+
+TEST(Bounding, ShouldPruneInThreeWayGameWhenBothBoundsExceeded) {
+    State state;
+    state.numPlayers = 3;
+    state.pruningEnabled = true;
+
+    Scores scores;
+    scores.scores[0] = 200;
+    scores.scores[1] = 50;
+    scores.scores[2] = 50;
+
+    scores.regions[0] = 0;
+    scores.regions[1] = 0;
+    scores.regions[2] = 0;
+
+    ScoreCalculatorMock mock;
+    mock.expectCall(scores);
+
+    Bounds bounds;
+    bounds.bounds[0] = INT_MIN;
+    bounds.bounds[1] = 70;
+    bounds.bounds[2] = 70;
+
+    ASSERT_TRUE(checkBounds(bounds, scores, state, 0)) << "Expected player 1's and player 2's bound to cause pruning";
+}
+
+TEST(Bounding, ShouldNotPruneInThreeWayGameWhenOnlyOneBoundExceeded) {
+    State state;
+    state.numPlayers = 3;
+    state.pruningEnabled = true;
+
+    Scores scores;
+    scores.scores[0] = 200;
+    scores.scores[1] = 50;
+    scores.scores[2] = 50;
+
+    scores.regions[0] = 0;
+    scores.regions[1] = 0;
+    scores.regions[2] = 0;
+
+    ScoreCalculatorMock mock;
+    mock.expectCall(scores);
+
+    Bounds bounds;
+    bounds.bounds[0] = INT_MIN;
+    bounds.bounds[1] = 70;
+    bounds.bounds[2] = 30;
+
+    ASSERT_FALSE(checkBounds(bounds, scores, state, 0)) << "Expected player 1's bound alone not to cause pruning";
+}
+
+TEST(Bounding, ShouldNotPruneWhenInDifferentRegions) {
+    State state;
+    state.numPlayers = 2;
+    state.thisPlayer = 0;
+
+    state.occupy(5, 5, 0);
+    state.occupy(15, 15, 1);
+
+    Scores scores(40, 100);
+    scores.regions[0] = 0;
+    scores.regions[0] = 1;
+
+    ScoreCalculatorMock mock;
+    mock.expectCall(scores);
+
+    Bounds bounds;
+    bounds.bounds[0] = 50;
+    bounds.bounds[1] = INT_MIN;
+
+    ASSERT_FALSE(checkBounds(bounds, scores, state, 1)) << "Expected player 0's bound not to cause pruning";
 }

@@ -463,8 +463,13 @@ inline bool checkBounds(Bounds& bounds, Scores& scores, State& state, int player
     if (!state.pruningEnabled) {
         return false;
     }
+    int region = scores.regions[player];
     for (int i = 0; i < state.numPlayers; i++) {
+        // Is bound exceeded?
         if (i != player && scores.scores[i] + state.pruneMargin <= bounds.bounds[i]
+            // Is this player's score connected to mine (negative correlation)?
+            && scores.regions[i] == region
+            // Is this player's score connected to mine (positive correlation)?
             && !(scores.isLoser(i) && scores.isLoser(player))) {
 #ifdef TRON_TRACE
             cerr << "Score " << scores.scores[i] << " breaks bound " << bounds.bounds[i] << " for player " << i
