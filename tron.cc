@@ -1,18 +1,17 @@
 #include <cstring>
 #include <vector>
-#include <map>
 #include <iostream>
 #include <iomanip>
 #include <algorithm>
 #include <climits>
-#include <ctime>
+#include <time.h>
 
 #define WIDTH  30
 #define HEIGHT 20
 #define MAX_X  (WIDTH - 1)
 #define MAX_Y  (HEIGHT - 1)
 #define PLAYERS 4
-#define TIME_LIMIT 90
+#define TIME_LIMIT 95
 
 using namespace std;
 
@@ -27,10 +26,10 @@ const char* const dirs[] = {RIGHT, LEFT, DOWN, UP};
 const int xOffsets[] = {1, -1, 0, 0};
 const int yOffsets[] = {0, 0, 1, -1};
 
-#define CLOCKS_PER_MS (CLOCKS_PER_SEC / 1000)
-
 long millis() {
-    return clock() / CLOCKS_PER_MS;
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
 }
 
 class Player {
@@ -176,6 +175,9 @@ public:
                 occupy(headX, headY, i);
             }
         } 
+
+        resetTimer();
+        nodesSearched = 0;
     }
 
     void print() {
@@ -554,7 +556,6 @@ void run() {
     Bounds bounds;
 
     while (1) {
-        state.resetTimer();
         state.readTurn(cin);
 
         // for (int i = 0; i < state.numPlayers; i++) {
@@ -564,7 +565,11 @@ void run() {
         long start = millis();
         minimax(scores, bounds, state, 0, (void*) voronoiRecursive, &voronoi);
         long elapsed = millis() - start;
-        cerr << elapsed << "ms" << endl;
+        cerr << elapsed << "ms";
+        if (state.isTimeLimitReached()) {
+            cerr << " (timeout)";
+        }
+        cerr << endl;
 
         for (int i = 0; i < state.numPlayers; i++) {
             cerr << scores.scores[i];
@@ -574,6 +579,7 @@ void run() {
             cerr << endl;
         }
         cerr << state.maxDepth << " plies" << endl;
+        cerr << state.nodesSearched << " nodes" << endl;
 
         if (state.timeLimitEnabled) {
             if (state.isTimeLimitReached()) {

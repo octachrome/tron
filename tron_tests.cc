@@ -919,6 +919,7 @@ public:
 
     void playTurn() {
         int i = turn % numPlayers;
+        cerr << "Turn " << i << endl;
         stringstream ss;
         ss << numPlayers << " " << i << endl;
         for (int k = 0; k < numPlayers; k++) {
