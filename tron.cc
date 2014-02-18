@@ -311,7 +311,6 @@ class Scores {
 public:
     int scores[PLAYERS];
     int regions[PLAYERS];
-    unsigned int opponents;
     unsigned int losers;
     const char* move;
 #ifdef TRON_TRACE
@@ -319,19 +318,16 @@ public:
 #endif
 
     inline Scores() {
-        opponents = 0;
         losers = 0;        
     }
 
     Scores(int score0, int score1) {
         scores[0] = score0;
         scores[1] = score1;
-        opponents = 0;
         losers = 0;        
     }
 
-    inline void clearOpponents() {
-        opponents = 0;
+    inline void clearFlags() {
         losers = 0;
     }
 
@@ -341,15 +337,6 @@ public:
 
     inline bool isLoser(int player) {
         return losers & (1 << player);
-    }
-
-    inline void setOpponents(int playerA, int playerB) {
-        opponents |= 1 << (playerA * 4 + playerB);
-        opponents |= 1 << (playerB * 4 + playerA);
-    }
-
-    inline bool areOpponents(int playerA, int playerB) const {
-        return regions[playerA] == regions[playerB] || opponents & (1 << (playerA * 4 + playerB));
     }
 
     inline void print() const {
@@ -400,7 +387,7 @@ void calculateScores(Scores& scores, Voronoi& voronoi, State& state) {
 
     voronoi.calculate(state);
 
-    scores.clearOpponents();
+    scores.clearFlags();
 
     for (int i = 0; i < state.numPlayers; i++) {
         scores.regions[i] = voronoi.regionForPlayer(i);
@@ -463,7 +450,6 @@ void calculateScores(Scores& scores, Voronoi& voronoi, State& state) {
             for (int i = 0; i < state.numPlayers; i++) {
                 if (i != bonus && !dead[i]) {
                     scores.scores[i] -= 1000 / (aliveCount - 1);
-                    scores.setOpponents(i, bonus);
                     scores.setLoser(i);
                 }
             }
