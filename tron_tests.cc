@@ -1,4 +1,4 @@
-#define TRON_TRACE
+//#define TRON_TRACE
 #include "tron.cc"
 
 #include "gtest/gtest.h"
@@ -253,10 +253,7 @@ public:
         calls = 0;
     }
 
-    void expectCall(int score0, int score1) {
-        Scores s;
-        s.scores[0] = score0;
-        s.scores[1] = score1;
+    void expectCall(Scores s) {
         scores[expectedCalls++] = s;
     }
 
@@ -287,7 +284,7 @@ TEST(Bounding, ShouldPruneWhenBoundExceededByFirstChild) {
     state.occupy(15, 15, 1);
 
     ScoreCalculatorMock mock;
-    mock.expectCall(40, 100);
+    mock.expectCall(Scores(40, 100));
 
     Bounds bounds;
     bounds.bounds[0] = 50;
@@ -506,6 +503,7 @@ void readBoard(State& state, istream& is) {
     for (unsigned i = 0; i < PLAYERS; i++) {
         if (players[i].x >= 0) {
             state.occupy(players[i].x, players[i].y, i);
+            state.numPlayers = i + 1;
         }
     }
 }
@@ -947,7 +945,7 @@ public:
     }
 };
 
-TEST(Pruning, PlaySelf) {
+TEST(Pruning, DISABLED_PlaySelf) {
     int numPlayers = 3;
     int moves = 100;
 
@@ -981,4 +979,49 @@ TEST(Pruning, PlaySelf) {
 
     // pruningOff.states[0].print();
     // pruningOn.states[0].print();
+}
+
+TEST(Scoring, ShouldSetLosers) {
+    State state;
+    readBoard(state,
+        "....*....*....*..A.*....*....*\n"
+        "000000000000000000000000000000\n"
+        "....*....*....*....*....*....*\n"
+        "....*....*....*..B.*....*....*\n"
+        "111111111111111111111111111111\n"
+        "....*....*....*....*....*....*\n"
+        "....*....*....*..C.*....*....*\n"
+        "....*....*....*....*....*....*\n");
+
+    Voronoi voronoi;
+
+    Scores scores = calculateScores(voronoi, state);
+
+    ASSERT_TRUE(scores.isLoser(0)) << "Expected player 0 to lose";
+    ASSERT_TRUE(scores.isLoser(1)) << "Expected player 1 to lose";
+    ASSERT_FALSE(scores.isLoser(2)) << "Expected player 2 not to lose";
+}
+
+TEST(Bounding, ShouldNotPruneWhenBothAreLosers) {
+    State state;
+    state.numPlayers = 3;
+    state.pruningEnabled = true;
+
+    Scores scores;
+    scores.scores[0] = -100;
+    scores.scores[1] = -200;
+    scores.scores[2] = 300;
+    scores.setLoser(0);
+    scores.setLoser(1);
+
+    ScoreCalculatorMock mock;
+    mock.expectCall(scores);
+
+    Bounds bounds;
+    bounds.bounds[0] = 50;
+    bounds.bounds[1] = 50;
+    bounds.bounds[2] = 50;
+
+    ASSERT_FALSE(checkBounds(bounds, scores, state, 0)) << "Expected player 1's bound not to cause pruning: "
+        "a better move for player 0 could cause both players to survive";
 }

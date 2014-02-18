@@ -4,7 +4,7 @@ run_tron_tests: tron_tests
 	./tron_tests
 
 tron_tests: tron_tests.o gtest_main.a
-	g++ -g -o $@ $^ -lpthread
+	g++ -g -o $@ $^ -lpthread -lrt
 
 tron_tests.o : tron.cc
 

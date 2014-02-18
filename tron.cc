@@ -312,18 +312,40 @@ public:
     int scores[PLAYERS];
     int regions[PLAYERS];
     unsigned int opponents;
+    unsigned int losers;
     const char* move;
 #ifdef TRON_TRACE
     char moves[30];
 #endif
 
+    inline Scores() {
+        opponents = 0;
+        losers = 0;        
+    }
+
+    Scores(int score0, int score1) {
+        scores[0] = score0;
+        scores[1] = score1;
+        opponents = 0;
+        losers = 0;        
+    }
+
     inline void clearOpponents() {
         opponents = 0;
+        losers = 0;
+    }
+
+    inline void setLoser(int player) {
+        losers |= (1 << player);
+    }
+
+    inline bool isLoser(int player) {
+        return losers & (1 << player);
     }
 
     inline void setOpponents(int playerA, int playerB) {
-        opponents |= (playerA * 4 + playerB);
-        opponents |= (playerB * 4 + playerA);
+        opponents |= 1 << (playerA * 4 + playerB);
+        opponents |= 1 << (playerB * 4 + playerA);
     }
 
     inline bool areOpponents(int playerA, int playerB) const {
@@ -384,6 +406,7 @@ void calculateScores(Scores& scores, Voronoi& voronoi, State& state) {
         scores.regions[i] = voronoi.regionForPlayer(i);
     }
 
+    // for each region
     for (int i = 0; i < state.numPlayers; i++) {
         occupants[i] = 0;
         totalSize[i] = 0;
@@ -441,6 +464,7 @@ void calculateScores(Scores& scores, Voronoi& voronoi, State& state) {
                 if (i != bonus && !dead[i]) {
                     scores.scores[i] -= 1000 / (aliveCount - 1);
                     scores.setOpponents(i, bonus);
+                    scores.setLoser(i);
                 }
             }
         }
@@ -455,7 +479,7 @@ inline bool checkBounds(Bounds& bounds, Scores& scores, State& state, int player
     }
     for (int i = 0; i < state.numPlayers; i++) {
         if (i != player && scores.scores[i] + state.pruneMargin <= bounds.bounds[i]
-            && scores.areOpponents(player, i)) {
+            && !(scores.isLoser(i) && scores.isLoser(player))) {
 #ifdef TRON_TRACE
             cerr << "Score " << scores.scores[i] << " breaks bound " << bounds.bounds[i] << " for player " << i
                 << " from " << bounds.moves[i] << endl;
