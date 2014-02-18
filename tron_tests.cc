@@ -752,7 +752,6 @@ TEST(Minimax, BadDecision2) {
     state.numPlayers = 4;
     state.thisPlayer = 0;
     state.maxDepth = 8;
-    state.pruningEnabled = false;
     state.timeLimitEnabled = false;
 
     readBoard(state,
@@ -791,14 +790,16 @@ TEST(Minimax, BadDecision2) {
         "28 2 11 12\n"
         "11 13 5 9\n");
 
-    Scores scores = minimax(bounds, state, 0, (void*) voronoiRecursive, &voronoi);
+    state.pruningEnabled = false;
+    Scores scores1 = minimax(bounds, state, 0, (void*) voronoiRecursive, &voronoi);
 
-    // cout << scores.scores[0] << endl;
-    // cout << scores.scores[1] << endl;
-    // cout << scores.scores[2] << endl;
-    // cout << scores.scores[3] << endl;
-    // cout << scores.move << endl;
-    // cout << scores.moves << endl;
+    state.pruningEnabled = true;
+    Scores scores2 = minimax(bounds, state, 0, (void*) voronoiRecursive, &voronoi);
+
+    ASSERT_EQ(scores1.scores[0], scores2.scores[0]) << "Expected same result for p0 with and without pruning";
+    ASSERT_EQ(scores1.scores[1], scores2.scores[1]) << "Expected same result for p0 with and without pruning";
+    ASSERT_EQ(scores1.scores[2], scores2.scores[2]) << "Expected same result for p0 with and without pruning";
+    ASSERT_EQ(scores1.scores[3], scores2.scores[3]) << "Expected same result for p0 with and without pruning";
 }
 
 TEST(Minimax, KillingSamePlayerRepeatedlyShouldDoNothing) {
