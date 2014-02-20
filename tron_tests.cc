@@ -783,6 +783,7 @@ TEST(Minimax, BadDecision3) {
     state.timeLimitEnabled = false;
     state.pruningEnabled = false;
 
+    // Game #983602: we played an illegal move
     readBoard(state,
         "....*....*....*....*.111111111\n"
         "....*....*....*..1111111111111\n"
@@ -810,6 +811,44 @@ TEST(Minimax, BadDecision3) {
 
     Scores scores = minimax(bounds, state, 0, (void*) voronoiRecursive, &voronoi);
     ASSERT_EQ(scores.move, DOWN) << "Expected p1 to make the only legal move";
+}
+
+TEST(Minimax, BadDecision4) {
+    State state;
+    state.numPlayers = 4;
+    state.thisPlayer = 2;
+    state.maxDepth = 8;
+    state.timeLimitEnabled = false;
+    state.pruningEnabled = false;
+
+    // Game #983770: should have killed p3
+    readBoard(state,
+        "....1...0000000000000000000000\n"
+        "....11110000000000000000000000\n"
+        "....11.111111111111111..*...00\n"
+        "....11.11111B.*....*.1333...00\n"
+        "....111..11111111..*.130000.00\n"
+        "....1.11111111111..*.130*...00\n"
+        "....11111111111111.*.130000000\n"
+        "....2222222222222111113.*.0000\n"
+        "....*....*....*22333333.*.000*\n"
+        "....*....*....2233.*....*.000*\n"
+        "22222222222222233..*....*.0A.*\n"
+        "2.33333333333333...*....*....*\n"
+        "22333333333333333333333333...*\n"
+        ".22222222222222222222222*3...*\n"
+        "....*....*....*....*...233...*\n"
+        "....*....*....*....*...233...*\n"
+        "....*....*....*....*...223...*\n"
+        "....*....*....*....*.22223...*\n"
+        "....*....*..C2222222223333...*\n"
+        "....*....*...D333333333.*....*\n");
+
+    Voronoi voronoi;
+    Bounds bounds;
+
+    Scores scores = minimax(bounds, state, 0, (void*) voronoiRecursive, &voronoi);
+    ASSERT_EQ(scores.move, DOWN) << "Expected p2 to kill";
 }
 
 TEST(Minimax, KillingSamePlayerRepeatedlyShouldDoNothing) {
