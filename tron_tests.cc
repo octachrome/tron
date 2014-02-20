@@ -775,6 +775,43 @@ TEST(Minimax, BadDecision2) {
     ASSERT_EQ(scores1.scores[3], scores2.scores[3]) << "Expected same result for p0 with and without pruning";
 }
 
+TEST(Minimax, BadDecision3) {
+    State state;
+    state.numPlayers = 2;
+    state.thisPlayer = 1;
+    state.maxDepth = 8;
+    state.timeLimitEnabled = false;
+    state.pruningEnabled = false;
+
+    readBoard(state,
+        "....*....*....*....*.111111111\n"
+        "....*....*....*..1111111111111\n"
+        "....*....*....*..1111111111111\n"
+        "....*....*....*....*1111111111\n"
+        "....*....*....*....*1111*....*\n"
+        "....*....*...11111111111*00000\n"
+        "....11111111.11111111111*00000\n"
+        "...11....*.1111111111111111100\n"
+        "...11....*11111111111111111100\n"
+        "..0011111111111111111111111100\n"
+        "..00*....*.1111111111111111100\n"
+        "..0000000000000000000000000100\n"
+        "..0.*....*....*....*....*.0100\n"
+        "..0.*....*....*....*....*.0100\n"
+        "..0.*....*....*....*....*.0100\n"
+        "..0.*....*....*....*....*.0100\n"
+        "..00000000000000000000000.0B00\n"
+        "....000000000000000000000...00\n"
+        "....00000000000000000000000000\n"
+        "....A0000000000000000000000000\n");
+
+    Voronoi voronoi;
+    Bounds bounds;
+
+    Scores scores = minimax(bounds, state, 0, (void*) voronoiRecursive, &voronoi);
+    ASSERT_EQ(scores.move, DOWN) << "Expected p1 to make the only legal move";
+}
+
 TEST(Minimax, KillingSamePlayerRepeatedlyShouldDoNothing) {
     State state;
     state.numPlayers = 3;
