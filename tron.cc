@@ -172,6 +172,7 @@ public:
                 // Player is already dead
                 kill(i);
             } else {
+                occupy(tailX, tailY, i);
                 occupy(headX, headY, i);
             }
         } 

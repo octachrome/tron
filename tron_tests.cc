@@ -720,6 +720,21 @@ void playTurn(State& state, const char* input) {
     state.readTurn(is);
 }
 
+TEST(State, FirstPlayersFullTrailShouldBeOccupied) {
+    State state;
+    state.numPlayers = 2;
+    state.thisPlayer = 1;
+
+    playTurn(state,
+        "2 1\n"
+        "0 0 0 1\n"
+        "5 5 5 5\n");
+
+    ASSERT_TRUE(state.occupied(0, 0)) << "Expected p0 to occupy 0,0";
+    ASSERT_TRUE(state.occupied(0, 0)) << "Expected p0 to occupy 0,1";
+    ASSERT_TRUE(state.occupied(0, 0)) << "Expected p1 to occupy 5,5";
+}
+
 TEST(Minimax, BadDecision2) {
     State state;
     state.numPlayers = 4;
