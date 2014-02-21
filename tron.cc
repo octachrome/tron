@@ -225,6 +225,7 @@ class Room {
 public:
     unsigned short size;
     unsigned short neighbourCount;
+    unsigned short neighbours[4];
 };
 
 class Voronoi {
@@ -258,7 +259,8 @@ private:
     }
 
     inline void makeNeighbours(int id1, int id2) {
-        rooms[id1].neighbourCount++;
+        Room& room1 = rooms[id1];
+        room1.neighbours[room1.neighbourCount++] = id2;
     }
 
 public:
@@ -343,6 +345,11 @@ public:
 
     inline const Room& startingRoom(int player) const {
         return rooms[player];
+    }
+
+    inline const Room& getNeighbour(const Room& room, int index) const {
+        int id = room.neighbours[index];
+        return rooms[id];
     }
 };
 

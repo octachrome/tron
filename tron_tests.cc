@@ -1193,4 +1193,16 @@ TEST(Voronoi, Rooms) {
     const Room& room = voronoi.startingRoom(0);
     ASSERT_EQ(45, room.size) << "Expected p0's starting room to have 45 cells";
     ASSERT_EQ(2, room.neighbourCount) << "Expected p0's starting room to have 2 neighbours";
+
+    const Room& neighbour0 = voronoi.getNeighbour(room, 0);
+    ASSERT_EQ(25, neighbour0.size) << "Expected the first adjacent room to have 2 cells";
+    ASSERT_EQ(0, neighbour0.neighbourCount) << "Expected the first adjacent room to have no neighbours";
+
+    const Room& neighbour1 = voronoi.getNeighbour(room, 1);
+    ASSERT_EQ(1, neighbour1.size) << "Expected the second adjacent room to have 1 cell";
+    ASSERT_EQ(1, neighbour1.neighbourCount) << "Expected the second adjacent room to have 1 neighbour";
+
+    const Room& neighbour1_0 = voronoi.getNeighbour(neighbour1, 0);
+    ASSERT_EQ(1, neighbour1_0.size) << "Expected the corridor to continue for another cell";
+    ASSERT_EQ(0, neighbour1_0.neighbourCount) << "Expected the corridor to end";
 }
