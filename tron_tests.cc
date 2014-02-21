@@ -16,6 +16,42 @@ Scores calculateScores(Voronoi& voronoi, State& state) {
     return scores;
 }
 
+void readBoard(State& state, istream& is) {
+    Player players[PLAYERS];
+    for (int i = 0; i < PLAYERS; i++) {
+        players[i].x = -1;
+    }
+    string line;
+    int y = 0;
+    while (getline(is, line)) {
+        for (unsigned x = 0; x < line.size(); x++) {
+            char cell = line[x];
+            int player = cell - '0';
+            if (player >= 0 && player < PLAYERS) {
+                state.occupy(x, y, player);
+            } else {
+                player = cell - 'A';
+                if (player >= 0 && player < PLAYERS) {
+                    players[player].x = x;
+                    players[player].y = y;
+                }
+            }
+        }
+        y++;
+    }
+    for (unsigned i = 0; i < PLAYERS; i++) {
+        if (players[i].x >= 0) {
+            state.occupy(players[i].x, players[i].y, i);
+            state.numPlayers = i + 1;
+        }
+    }
+}
+
+void readBoard(State& state, const char* board) {
+    istringstream is(board);
+    readBoard(state, is);
+}
+
 Scores scoreCalculator_MaximiseScore(Bounds& bounds, State& state, int turn, void* dummy, void* data) {
     Scores scores;
     scores.scores[1] = 1;
@@ -113,19 +149,29 @@ TEST(Voronoi, ShouldFindTwoRegionsWhenDividedHorizontally) {
 TEST(Scoring, ConnectedRegionsScoreOnVoronoi) {
     State state;
     state.numPlayers = 2;
-    state.occupy(4, 4, 0);
-    for (int i = 2; i <= 27; i++) {
-        state.occupy(i, 12, 1);
-    }
-    state.occupy(27, 13, 1);
-    state.occupy(27, 14, 1);
-    state.occupy(27, 15, 1);
-    state.occupy(26, 15, 1);
-    state.occupy(25, 15, 1);
+
+    readBoard(state,
+        "....*....*....*....*....*....*\n"
+        "....*....*....*....*....*....*\n"
+        "....*....*....*....*....*....*\n"
+        "....*....*....*....*....*....*\n"
+        "....A....*....*....*....*....*\n"
+        "....*....*....*....*....*....*\n"
+        "....*....*....*....*....*....*\n"
+        "....*....*....*....*....*....*\n"
+        "....*....*....*....*....*....*\n"
+        "....*....*....*....*....*....*\n"
+        "....*....*....*....*....*....*\n"
+        "....*....*....*....*....*....*\n"
+        "..11111111111111111111111111.*\n"
+        "....*....*....*....*....*..1.*\n"
+        "....*....*....*....*....*..1.*\n"
+        "....*....*....*....*....*B11.*\n");
 
     Voronoi voronoi;
 
     Scores scores = calculateScores(voronoi, state);
+
     ASSERT_EQ(306, scores.scores[0]);
     ASSERT_EQ(243, scores.scores[1]);
 }
@@ -449,42 +495,6 @@ TEST(Minimax, DeadPlayerShouldNotGetTurn) {
     ASSERT_EQ(1, results.turn) << "Expected player 0 to miss their turn";
     ASSERT_FALSE(results.occupied) << "Expected player 0 to be missing";
     ASSERT_FALSE(state.occupied(1, 1)) << "Expected player 0 to be still missing after the call";
-}
-
-void readBoard(State& state, istream& is) {
-    Player players[PLAYERS];
-    for (int i = 0; i < PLAYERS; i++) {
-        players[i].x = -1;
-    }
-    string line;
-    int y = 0;
-    while (getline(is, line)) {
-        for (unsigned x = 0; x < line.size(); x++) {
-            char cell = line[x];
-            int player = cell - '0';
-            if (player >= 0 && player < PLAYERS) {
-                state.occupy(x, y, player);
-            } else {
-                player = cell - 'A';
-                if (player >= 0 && player < PLAYERS) {
-                    players[player].x = x;
-                    players[player].y = y;
-                }
-            }
-        }
-        y++;
-    }
-    for (unsigned i = 0; i < PLAYERS; i++) {
-        if (players[i].x >= 0) {
-            state.occupy(players[i].x, players[i].y, i);
-            state.numPlayers = i + 1;
-        }
-    }
-}
-
-void readBoard(State& state, const char* board) {
-    istringstream is(board);
-    readBoard(state, is);
 }
 
 TEST(Util, BoardReader) {
@@ -1205,4 +1215,6 @@ TEST(Voronoi, Rooms) {
     const Room& neighbour1_0 = voronoi.getNeighbour(neighbour1, 0);
     ASSERT_EQ(1, neighbour1_0.size) << "Expected the corridor to continue for another cell";
     ASSERT_EQ(0, neighbour1_0.neighbourCount) << "Expected the corridor to end";
+
+    ASSERT_EQ(25 + 45, voronoi.playerRegionSize(0)) << "Expected p0's region to be the sum of his largest regions";
 }

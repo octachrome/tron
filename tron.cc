@@ -226,6 +226,7 @@ public:
     unsigned short size;
     unsigned short neighbourCount;
     unsigned short neighbours[4];
+    bool visited;
 };
 
 class Voronoi {
@@ -240,7 +241,6 @@ private:
 
     void clear() {
         memset(grid, 255, sizeof(grid));
-        memset(sizes, 0, sizeof(sizes));
         nodeCount = 0;
         roomCount = 0;
     }
@@ -253,14 +253,33 @@ private:
 
     inline int addRoom() {
         int id = roomCount++;
-        rooms[id].size = 0;
-        rooms[id].neighbourCount = 0;
+        Room& room = rooms[id];
+        room.size = 0;
+        room.neighbourCount = 0;
+        room.visited = false;
         return id;
     }
 
-    inline void makeNeighbours(int id1, int id2) {
-        Room& room1 = rooms[id1];
-        room1.neighbours[room1.neighbourCount++] = id2;
+    inline void makeNeighbours(int roomId1, int roomId2) {
+        Room& room1 = rooms[roomId1];
+        room1.neighbours[room1.neighbourCount++] = roomId2;
+    }
+
+    int calculateRegionSize(Room& room) {
+        if (room.visited) {
+            return 0;
+        }
+        room.visited = true;
+        int maxNeighbourSize = 0;
+        for (int i = 0; i < room.neighbourCount; i++) {
+            Room& neighbour = getNeighbour(room, i);
+            int size = calculateRegionSize(neighbour);
+            if (size > maxNeighbourSize) {
+                maxNeighbourSize = size;
+            }
+        }
+        room.visited = false;
+        return room.size + maxNeighbourSize;
     }
 
 public:
@@ -268,11 +287,13 @@ public:
         clear();
 
         for (int i = 0; i < state.numPlayers; i++) {
+            // Ensure that player id = room id, no matter how many players are alive
+            int room = addRoom();
             if (state.isAlive(i)) {
                 const Player& player = state.players[i];
                 grid[player.x][player.y].player = i;
                 grid[player.x][player.y].distance = 0;
-                grid[player.x][player.y].room = addRoom();
+                grid[player.x][player.y].room = room;
                 addNode(player.x, player.y);
             }
             regions[i] = i;
@@ -301,7 +322,6 @@ public:
                             neighbour.room = vor.room;
                         }
                         addNode(xx, yy);
-                        sizes[vor.player]++;
                         Room& room = rooms[neighbour.room];
                         room.size++;
                     } else if (neighbour.player != vor.player && neighbour.player != 254) {
@@ -310,11 +330,20 @@ public:
 
                         if (neighbour.distance == vor.distance + 1) {
                             // This is a shared boundary: remove it from the other player's territory
-                            sizes[neighbour.player]--;
+                            rooms[neighbour.room].size--;
                             neighbour.player = 254;
                         }
                     }
                 }
+            }
+        }
+
+        for (int i = 0; i < state.numPlayers; i++) {
+            if (state.isAlive(i)) {
+                Room& room = startingRoom(i);
+                sizes[i] = calculateRegionSize(room);
+            } else {
+                sizes[i] = 0;
             }
         }
     }
@@ -343,13 +372,13 @@ public:
         return regions[player];
     }
 
-    inline const Room& startingRoom(int player) const {
+    inline Room& startingRoom(int player) {
         return rooms[player];
     }
 
-    inline const Room& getNeighbour(const Room& room, int index) const {
-        int id = room.neighbours[index];
-        return rooms[id];
+    inline Room& getNeighbour(const Room& room, int index) {
+        int roomId = room.neighbours[index];
+        return rooms[roomId];
     }
 };
 
@@ -364,7 +393,8 @@ public:
 #endif
 
     inline Scores() {
-        losers = 0;        
+        losers = 0;
+        move = "";
     }
 
     Scores(int score0, int score1) {
