@@ -99,6 +99,10 @@ public:
         }
     }
 
+    inline bool isDoor(int x, int y) const {
+        return (occupied(x - 1, y) && occupied(x + 1, y)) || (occupied(x, y - 1) && occupied(x, y + 1));
+    }
+
     inline bool occupied(int x, int y) const {
         if (x < 0 || y < 0 || x > MAX_X || y > MAX_Y) {
             return true;
@@ -208,6 +212,7 @@ class Vor {
 public:
     unsigned char player;
     unsigned char distance;
+    unsigned short room;
 };
 
 class Coord {
@@ -216,24 +221,38 @@ public:
     unsigned char y;
 };
 
+class Room {
+public:
+    int size;
+};
+
 class Voronoi {
 private:
     int sizes[PLAYERS];
     int regions[PLAYERS];
     Vor grid[WIDTH][HEIGHT];
     Coord openNodes[10000];
-    int listEnd;
+    int nodeCount;
+    Room rooms[10000];
+    int roomCount;
 
     void clear() {
-        memset(grid, 255, WIDTH * HEIGHT * sizeof(Vor));
-        memset(sizes, 0, PLAYERS * sizeof(int));
-        listEnd = 0;
+        memset(grid, 255, sizeof(grid));
+        memset(sizes, 0, sizeof(sizes));
+        nodeCount = 0;
+        roomCount = 0;
     }
 
     inline void addNode(int x, int y) {
-        openNodes[listEnd].x = x;
-        openNodes[listEnd].y = y;
-        listEnd++;
+        openNodes[nodeCount].x = x;
+        openNodes[nodeCount].y = y;
+        nodeCount++;
+    }
+
+    inline int addRoom() {
+        rooms[roomCount].size = 0;
+        roomCount++;
+        return roomCount - 1;
     }
 
 public:
@@ -242,19 +261,20 @@ public:
 
         for (int i = 0; i < state.numPlayers; i++) {
             if (state.isAlive(i)) {
-                const Player* player = state.players + i;
-                grid[player->x][player->y].player = i;
-                grid[player->x][player->y].distance = 0;
-                addNode(player->x, player->y);
+                const Player& player = state.players[i];
+                grid[player.x][player.y].player = i;
+                grid[player.x][player.y].distance = 0;
+                grid[player.x][player.y].room = addRoom();
+                addNode(player.x, player.y);
             }
             regions[i] = i;
         }
 
-        for (int i = 0; i < listEnd; i++) {
+        for (int i = 0; i < nodeCount; i++) {
             int x = openNodes[i].x;
             int y = openNodes[i].y;
-            Vor* vor = &grid[x][y];
-            if (vor->player == 254) {
+            Vor& vor = grid[x][y];
+            if (vor.player == 254) {
                 continue;
             }
 
@@ -262,20 +282,27 @@ public:
                 int xx = x + xOffsets[j];
                 int yy = y + yOffsets[j];
                 if (!state.occupied(xx, yy)) {
-                    Vor* neighbour = &grid[xx][yy];
-                    if (neighbour->player == 255) {
-                        neighbour->player = vor->player;
-                        neighbour->distance = vor->distance + 1;
+                    Vor& neighbour = grid[xx][yy];
+                    if (neighbour.player == 255) {
+                        neighbour.player = vor.player;
+                        neighbour.distance = vor.distance + 1;
+                        if (state.isDoor(xx, yy)) {
+                            neighbour.room = addRoom();
+                        } else {
+                            neighbour.room = vor.room;
+                        }
                         addNode(xx, yy);
-                        sizes[vor->player]++;
-                    } else if (neighbour->player != vor->player && neighbour->player != 254) {
+                        sizes[vor.player]++;
+                        Room& room = rooms[neighbour.room];
+                        room.size++;
+                    } else if (neighbour.player != vor.player && neighbour.player != 254) {
                         // Join the regions
-                        regions[neighbour->player] = regions[vor->player];
+                        regions[neighbour.player] = regions[vor.player];
 
-                        if (neighbour->distance == vor->distance + 1) {
+                        if (neighbour.distance == vor.distance + 1) {
                             // This is a shared boundary: remove it from the other player's territory
-                            sizes[neighbour->player]--;
-                            neighbour->player = 254;
+                            sizes[neighbour.player]--;
+                            neighbour.player = 254;
                         }
                     }
                 }
@@ -283,15 +310,15 @@ public:
         }
     }
 
-    inline int playerRegionSize(int player) {
+    inline int playerRegionSize(int player) const {
         return sizes[player];
     }
 
-    inline Vor& get(int x, int y) {
+    inline const Vor& get(int x, int y) const {
         return grid[x][y];
     }
 
-    void print() {
+    void print() const {
         cerr << hex;
         for (int y = 0; y <= MAX_Y; y++) {
             for (int x = 0; x <= MAX_X; x++) {
@@ -303,8 +330,12 @@ public:
         cerr << dec;
     }
 
-    inline int regionForPlayer(int player) {
+    inline int regionForPlayer(int player) const {
         return regions[player];
+    }
+
+    inline const Room& startingRoom(int player) const {
+        return rooms[player];
     }
 };
 

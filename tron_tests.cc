@@ -1171,3 +1171,25 @@ TEST(Bounding, ShouldNotPruneWhenInDifferentRegions) {
 
     ASSERT_FALSE(checkBounds(bounds, scores, state, 1)) << "Expected player 0's bound not to cause pruning";
 }
+
+TEST(Voronoi, Rooms) {
+    State state;
+    state.numPlayers = 2;
+
+    readBoard(state,
+        "....*.0..*....A0...*....1....*\n"
+        "....*.0..*....*0...*....1....*\n"
+        "....*.000*....*0...*....1....*\n"
+        "....*....*....*0...*....1....*\n"
+        "0000000..*....*0...*....1....*\n"
+        "....0....*....*0...*....1....*\n"
+        "....000000000000...*....B....*\n"
+        "....*....*....*....*....*....*\n"
+        "....*....*....*....*....*....*\n");
+
+    Voronoi voronoi;
+    voronoi.calculate(state);
+
+    const Room& room = voronoi.startingRoom(0);
+    ASSERT_EQ(45, room.size) << "Expected p0's starting room to have 45 cells";
+}
