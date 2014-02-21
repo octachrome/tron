@@ -1248,11 +1248,11 @@ TEST(Voronoi, RoomLoop) {
 
     readBoard(state,
         "000000000000000000000000000000\n"
-        ".........*....*....*....*....0\n"
-        "...0.....*....*....0....*....0\n"
+        "....*....*....*....*....*....0\n"
+        "...0*....*....*....0....*....0\n"
         "A..00000000000000000000000.000\n"
-        "...0.....*....*....0....*....0\n"
-        ".........*....*....*....*....0\n"
+        "...0*....*....*....0....*....0\n"
+        "....*....*....*....*....*....0\n"
         "000000000000000000000000000000\n"
         "....*....*....*....*....*....*\n"
         "....*....*....*....*....*....*\n"
@@ -1262,4 +1262,35 @@ TEST(Voronoi, RoomLoop) {
     voronoi.calculate(state);
 
     ASSERT_EQ(115, voronoi.playerRegionSize(0)) << "Expected p0's region to be the sum of all rooms";
+}
+
+TEST(State, Door) {
+    State state;
+
+    readBoard(state,
+        "....*....0....*....0....*....*\n"
+        ".0.0*....0....*....0....*....*\n"
+        "..A.*....B....*...C*....0D...*\n"
+        "....*....*0...*....*0...*.0..*\n"
+        "....*....*0...*....*0...*....*\n");
+
+    ASSERT_FALSE(state.isDoor(2, 2, 1, 0)) << "Expected no door right of p0";
+    ASSERT_FALSE(state.isDoor(2, 2, -1, 0)) << "Expected no door left of p0";
+    ASSERT_FALSE(state.isDoor(2, 2, 0, 1)) << "Expected no door below p0";
+    ASSERT_TRUE(state.isDoor(2, 2, 0, -1)) << "Expected a door above p0";
+
+    ASSERT_TRUE(state.isDoor(9, 2, 1, 0)) << "Expected a door right of p1";
+    ASSERT_FALSE(state.isDoor(9, 2, -1, 0)) << "Expected no door left of p1";
+    ASSERT_FALSE(state.isDoor(9, 2, 0, 1)) << "Expected no door below p1";
+    ASSERT_FALSE(state.isDoor(9, 2, 0, -1)) << "Expected no door above p1";
+
+    ASSERT_FALSE(state.isDoor(18, 2, 1, 0)) << "Expected no door right of p2";
+    ASSERT_FALSE(state.isDoor(18, 2, -1, 0)) << "Expected no door left of p2";
+    ASSERT_FALSE(state.isDoor(18, 2, 0, 1)) << "Expected no door below p2";
+    ASSERT_FALSE(state.isDoor(18, 2, 0, -1)) << "Expected no door above p2";
+
+    ASSERT_FALSE(state.isDoor(25, 2, 1, 0)) << "Expected no door right of p3";
+    ASSERT_FALSE(state.isDoor(25, 2, -1, 0)) << "Expected no door left of p3";
+    ASSERT_TRUE(state.isDoor(25, 2, 0, 1)) << "Expected a door below p3";
+    ASSERT_FALSE(state.isDoor(25, 2, 0, -1)) << "Expected no door above p3";
 }

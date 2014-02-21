@@ -104,6 +104,22 @@ public:
         return (occupied(x - 1, y) && occupied(x + 1, y)) || (occupied(x, y - 1) && occupied(x, y + 1));
     }
 
+    // Starting from (x,y), move towards xOffset OR yOffset, and find out whether we pass through a door
+    inline bool isDoor(int x, int y, int xOffset, int yOffset) const {
+        if (xOffset) {
+            bool above = occupied(x, y - 1) || occupied(x + xOffset, y - 1);
+            bool below = occupied(x, y + 1) || occupied(x + xOffset, y + 1);
+            return above && below;
+        }
+        if (yOffset) {
+            bool left = occupied(x - 1, y) || occupied(x - 1, y + yOffset);
+            bool right = occupied(x + 1, y) || occupied(x + 1, y + yOffset);
+            return left && right;
+        }
+        // should never be reached
+        return false;
+    }
+
     inline bool occupied(int x, int y) const {
         if (x < 0 || y < 0 || x > MAX_X || y > MAX_Y) {
             return true;
