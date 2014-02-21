@@ -71,9 +71,9 @@ public:
 
     State() {
         memset(grid, 0, WIDTH * HEIGHT * sizeof(char));
-        maxDepth = 14;
+        maxDepth = 8;
         pruneMargin = 0;
-        pruningEnabled = true;
+        pruningEnabled = false;
         nodesSearched = 0;
         timeLimitEnabled = true;
         alive = 255;

@@ -248,6 +248,7 @@ TEST(Bounding, ShouldPruneWhenBoundExceededByFirstChild) {
     State state;
     state.numPlayers = 2;
     state.thisPlayer = 0;
+    state.pruningEnabled = true;
 
     state.occupy(5, 5, 0);
     state.occupy(15, 15, 1);
