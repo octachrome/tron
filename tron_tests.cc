@@ -1192,4 +1192,5 @@ TEST(Voronoi, Rooms) {
 
     const Room& room = voronoi.startingRoom(0);
     ASSERT_EQ(45, room.size) << "Expected p0's starting room to have 45 cells";
+    ASSERT_EQ(2, room.neighbourCount) << "Expected p0's starting room to have 2 neighbours";
 }

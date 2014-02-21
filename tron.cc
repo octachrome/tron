@@ -223,7 +223,8 @@ public:
 
 class Room {
 public:
-    int size;
+    unsigned short size;
+    unsigned short neighbourCount;
 };
 
 class Voronoi {
@@ -250,9 +251,14 @@ private:
     }
 
     inline int addRoom() {
-        rooms[roomCount].size = 0;
-        roomCount++;
-        return roomCount - 1;
+        int id = roomCount++;
+        rooms[id].size = 0;
+        rooms[id].neighbourCount = 0;
+        return id;
+    }
+
+    inline void makeNeighbours(int id1, int id2) {
+        rooms[id1].neighbourCount++;
     }
 
 public:
@@ -288,6 +294,7 @@ public:
                         neighbour.distance = vor.distance + 1;
                         if (state.isDoor(xx, yy)) {
                             neighbour.room = addRoom();
+                            makeNeighbours(vor.room, neighbour.room);
                         } else {
                             neighbour.room = vor.room;
                         }
