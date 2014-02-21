@@ -12,6 +12,7 @@
 #define MAX_Y  (HEIGHT - 1)
 #define PLAYERS 4
 #define TIME_LIMIT 95
+#define MAX_NEIGHBOURS 32
 
 using namespace std;
 
@@ -225,7 +226,7 @@ class Room {
 public:
     unsigned short size;
     unsigned short neighbourCount;
-    unsigned short neighbours[4];
+    unsigned short neighbours[MAX_NEIGHBOURS];
     bool visited;
 };
 
@@ -271,6 +272,10 @@ private:
             if (from.neighbours[i] == toId) {
                 return;
             }
+        }
+        if (from.neighbourCount >= MAX_NEIGHBOURS) {
+            cerr << "Neighbour limit reached" << endl;
+            return;
         }
         from.neighbours[from.neighbourCount++] = toId;
     }
