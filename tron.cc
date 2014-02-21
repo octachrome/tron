@@ -261,8 +261,18 @@ private:
     }
 
     inline void makeNeighbours(int roomId1, int roomId2) {
-        Room& room1 = rooms[roomId1];
-        room1.neighbours[room1.neighbourCount++] = roomId2;
+        makeNeighboursOneWay(roomId1, roomId2);
+        makeNeighboursOneWay(roomId2, roomId1);
+    }
+
+    inline void makeNeighboursOneWay(int fromId, int toId) {
+        Room& from = rooms[fromId];
+        for (int i = 0; i < from.neighbourCount; i++) {
+            if (from.neighbours[i] == toId) {
+                return;
+            }
+        }
+        from.neighbours[from.neighbourCount++] = toId;
     }
 
     int calculateRegionSize(Room& room) {
@@ -273,9 +283,11 @@ private:
         int maxNeighbourSize = 0;
         for (int i = 0; i < room.neighbourCount; i++) {
             Room& neighbour = getNeighbour(room, i);
-            int size = calculateRegionSize(neighbour);
-            if (size > maxNeighbourSize) {
-                maxNeighbourSize = size;
+            if (&neighbour != &room) {
+                int size = calculateRegionSize(neighbour);
+                if (size > maxNeighbourSize) {
+                    maxNeighbourSize = size;
+                }
             }
         }
         room.visited = false;
@@ -324,14 +336,19 @@ public:
                         addNode(xx, yy);
                         Room& room = rooms[neighbour.room];
                         room.size++;
-                    } else if (neighbour.player != vor.player && neighbour.player != 254) {
-                        // Join the regions
-                        regions[neighbour.player] = regions[vor.player];
+                    } else if (vor.room != neighbour.room) {
+                        if (neighbour.player == vor.player) {
+                            makeNeighbours(vor.room, neighbour.room);
+                        } else if (neighbour.player != 254) {
+                            // Join the regions
+                            regions[neighbour.player] = regions[vor.player];
 
-                        if (neighbour.distance == vor.distance + 1) {
-                            // This is a shared boundary: remove it from the other player's territory
-                            rooms[neighbour.room].size--;
-                            neighbour.player = 254;
+                            if (neighbour.distance == vor.distance + 1) {
+                                // This is a shared boundary: remove it from the other player's territory
+                                rooms[neighbour.room].size--;
+                                // This cell is no man's land
+                                neighbour.player = 254;
+                            }
                         }
                     }
                 }
@@ -361,7 +378,7 @@ public:
         for (int y = 0; y <= MAX_Y; y++) {
             for (int x = 0; x <= MAX_X; x++) {
                 Vor vor = get(x, y);
-                cerr << setw(3) << int(vor.player);
+                cerr << setw(3) << (int(vor.room) > 16 ? 16 : int(vor.room));
             }
             cerr << endl;
         }

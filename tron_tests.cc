@@ -1226,15 +1226,40 @@ TEST(Voronoi, Rooms) {
 
     const Room& neighbour0 = voronoi.getNeighbour(room, 0);
     ASSERT_EQ(25, neighbour0.size) << "Expected the first adjacent room to have 2 cells";
-    ASSERT_EQ(0, neighbour0.neighbourCount) << "Expected the first adjacent room to have no neighbours";
+    ASSERT_EQ(1, neighbour0.neighbourCount) << "Expected the first adjacent room to have one neighbour";
+    ASSERT_EQ(&voronoi.getNeighbour(neighbour0, 0), &room) << "Expected the neighbour to be the original room";
 
     const Room& neighbour1 = voronoi.getNeighbour(room, 1);
     ASSERT_EQ(1, neighbour1.size) << "Expected the second adjacent room to have 1 cell";
-    ASSERT_EQ(1, neighbour1.neighbourCount) << "Expected the second adjacent room to have 1 neighbour";
+    ASSERT_EQ(2, neighbour1.neighbourCount) << "Expected the second adjacent room to have 2 neighbours";
+    ASSERT_EQ(&voronoi.getNeighbour(neighbour1, 0), &room) << "Expected the first neighbour to be the original room";
 
-    const Room& neighbour1_0 = voronoi.getNeighbour(neighbour1, 0);
+    const Room& neighbour1_0 = voronoi.getNeighbour(neighbour1, 1);
     ASSERT_EQ(1, neighbour1_0.size) << "Expected the corridor to continue for another cell";
-    ASSERT_EQ(0, neighbour1_0.neighbourCount) << "Expected the corridor to end";
+    ASSERT_EQ(1, neighbour1_0.neighbourCount) << "Expected the corridor to have only one neighbour";
+    ASSERT_EQ(&voronoi.getNeighbour(neighbour1_0, 0), &neighbour1) << "Expected the neighbour to be back where we came from";
 
     ASSERT_EQ(25 + 45, voronoi.playerRegionSize(0)) << "Expected p0's region to be the sum of his largest regions";
+}
+
+TEST(Voronoi, RoomLoop) {
+    State state;
+    state.numPlayers = 2;
+
+    readBoard(state,
+        "000000000000000000000000000000\n"
+        ".........*....*....*....*....0\n"
+        "...0.....*....*....0....*....0\n"
+        "A..00000000000000000000000.000\n"
+        "...0.....*....*....0....*....0\n"
+        ".........*....*....*....*....0\n"
+        "000000000000000000000000000000\n"
+        "....*....*....*....*....*....*\n"
+        "....*....*....*....*....*....*\n"
+        "B...*....*....*....*....*....*\n");
+
+    Voronoi voronoi;
+    voronoi.calculate(state);
+
+    ASSERT_EQ(115, voronoi.playerRegionSize(0)) << "Expected p0's region to be the sum of all rooms";
 }
