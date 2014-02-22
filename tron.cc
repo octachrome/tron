@@ -1,8 +1,6 @@
 #include <cstring>
-#include <vector>
 #include <iostream>
 #include <iomanip>
-#include <algorithm>
 #include <climits>
 #include <time.h>
 
