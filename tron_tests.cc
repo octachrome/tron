@@ -1423,6 +1423,137 @@ TEST(Voronoi, RoomJoinedToItself) {
     ASSERT_EQ(2, corridor.neighbourCount);
 }
 
+TEST(Voronoi, ThreeWayRoomCombining) {
+    State state;
+    state.numPlayers = 1;
+
+    readBoard(state,
+        ".0..*....A....*.0..\n"
+        ".0..*.0..*..0.*.0..\n"
+        ".0..*.0..*..0.*.0..\n"
+        ".0..*....*....*.0..\n"
+        ".0..*....*....*.0..\n"
+        ".0000000000000000..\n");
+
+    Voronoi voronoi;
+    voronoi.calculate(state);
+
+    const Room& room0 = voronoi.startingRoom(0);
+    ASSERT_EQ(63, room0.size) << "Expected first room to take nearly all the space";
+    ASSERT_EQ(4, room0.neighbourCount);
+
+    const Room& corridor1 = voronoi.getNeighbour(room0, 0);
+    ASSERT_EQ(1, corridor1.size);
+    ASSERT_EQ(&corridor1, &voronoi.getNeighbour(room0, 2));
+
+    const Room& corridor2 = voronoi.getNeighbour(room0, 1);
+    ASSERT_EQ(1, corridor2.size);
+    ASSERT_EQ(&corridor2, &voronoi.getNeighbour(room0, 3));
+    ASSERT_NE(&corridor1, &corridor2);
+
+    ASSERT_EQ(2, corridor1.neighbourCount);
+    ASSERT_EQ(&room0, &voronoi.getNeighbour(corridor1, 0));
+    ASSERT_EQ(&room0, &voronoi.getNeighbour(corridor1, 1));
+
+    ASSERT_EQ(2, corridor2.neighbourCount);
+    ASSERT_EQ(&room0, &voronoi.getNeighbour(corridor2, 0));
+    ASSERT_EQ(&room0, &voronoi.getNeighbour(corridor2, 1));
+}
+
+TEST(Voronoi, CombineWithACombinedRoom) {
+    State state;
+    state.numPlayers = 1;
+
+    readBoard(state,
+        "0...*....A..0..\n"
+        "0..0*.0..*..0..\n"
+        "0...*.0..*..0..\n"
+        "0...*.0..*..0..\n"
+        "0...*.0..*..0..\n"
+        "0...*.0..*..0..\n"
+        "0...*.0..*..0..\n"
+        "0...*.0..*..0..\n"
+        "0...*.0..*..0..\n"
+        "0...*.0..*..0..\n"
+        "0...*.0..*..0..\n"
+        "0...*....*..0..\n"
+        "0...*....*..0..\n"
+        "0000000000000..\n");
+
+    Voronoi voronoi;
+    voronoi.calculate(state);
+
+    const Room& room0 = voronoi.startingRoom(0);
+    ASSERT_EQ(129, room0.size) << "Expected first room to take nearly all the space";
+    ASSERT_EQ(4, room0.neighbourCount);
+
+    const Room& corridor1 = voronoi.getNeighbour(room0, 0);
+    ASSERT_EQ(1, corridor1.size);
+    ASSERT_EQ(&corridor1, &voronoi.getNeighbour(room0, 1));
+
+    const Room& corridor2 = voronoi.getNeighbour(room0, 2);
+    ASSERT_EQ(1, corridor2.size);
+    ASSERT_EQ(&corridor2, &voronoi.getNeighbour(room0, 3));
+
+    ASSERT_NE(&corridor1, &corridor2);
+
+    ASSERT_EQ(2, corridor1.neighbourCount);
+    ASSERT_EQ(&room0, &voronoi.getNeighbour(corridor1, 0));
+    ASSERT_EQ(&room0, &voronoi.getNeighbour(corridor1, 1));
+
+    ASSERT_EQ(2, corridor2.neighbourCount);
+    ASSERT_EQ(&room0, &voronoi.getNeighbour(corridor2, 0));
+    ASSERT_EQ(&room0, &voronoi.getNeighbour(corridor2, 1));
+}
+
+TEST(Voronoi, CombineWithACombinedRoom2) {
+    State state;
+    state.numPlayers = 1;
+
+    readBoard(state,
+        "0...........0..\n"
+        "0...........0..\n"
+        "0..0000000..0..\n"
+        "0...*....A..0..\n"
+        "0..0*.0..*..0..\n"
+        "0..0*.0..*..0..\n"
+        "0..0*.0..*..0..\n"
+        "0..0*.0..*..0..\n"
+        "0..0*.0..*..0..\n"
+        "0...*.0..*..0..\n"
+        "0...*.0..*..0..\n"
+        "0...*.0..*..0..\n"
+        "0...*.0..*..0..\n"
+        "0...*.0..*..0..\n"
+        "0...*....*..0..\n"
+        "0...*....*..0..\n"
+        "0000000000000..\n");
+
+    Voronoi voronoi;
+    voronoi.calculate(state);
+
+    const Room& room0 = voronoi.startingRoom(0);
+    ASSERT_EQ(151, room0.size) << "Expected first room to take nearly all the space";
+    ASSERT_EQ(4, room0.neighbourCount);
+
+    const Room& corridor1 = voronoi.getNeighbour(room0, 0);
+    ASSERT_EQ(1, corridor1.size);
+    ASSERT_EQ(&corridor1, &voronoi.getNeighbour(room0, 2));
+
+    const Room& corridor2 = voronoi.getNeighbour(room0, 1);
+    ASSERT_EQ(1, corridor2.size);
+    ASSERT_EQ(&corridor2, &voronoi.getNeighbour(room0, 3));
+    ASSERT_NE(&corridor1, &corridor2);
+
+    ASSERT_EQ(2, corridor1.neighbourCount);
+    ASSERT_EQ(&room0, &voronoi.getNeighbour(corridor1, 0));
+    ASSERT_EQ(&room0, &voronoi.getNeighbour(corridor1, 1));
+
+    ASSERT_EQ(2, corridor2.neighbourCount);
+    ASSERT_EQ(&room0, &voronoi.getNeighbour(corridor2, 0));
+    ASSERT_EQ(&room0, &voronoi.getNeighbour(corridor2, 1));
+}
+
 TEST(State, Door) {
     State state;
 
