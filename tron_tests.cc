@@ -1363,6 +1363,40 @@ TEST(Voronoi, PlayerOnBoundary) {
     .end();
 }
 
+TEST(State, TwoRoomsJoinedTwice) {
+    State state;
+    state.numPlayers = 1;
+
+    readBoard(state,
+        "A...0....0...\n"
+        "....*....0...\n"
+        "....0....0...\n"
+        "....*....0...\n"
+        "0000000000...\n"
+        "....*....*...\n");
+
+    Voronoi voronoi;
+    voronoi.calculate(state);
+
+    const Room& room0 = voronoi.startingRoom(0);
+    ASSERT_EQ(15, room0.size) << "Expected room to have 15 cells";
+    ASSERT_EQ(2, room0.neighbourCount) << "Expected room to have 2 neighbours";
+
+    Room& corridor1 = voronoi.getNeighbour(room0, 0);
+    ASSERT_EQ(2, corridor1.neighbourCount) << "Expected corridor to have 2 neighbours";
+
+    Room& room1 = voronoi.getNeighbour(corridor1, 1);
+    ASSERT_EQ(15, room1.size) << "Expected room to have 16 cells";
+    ASSERT_EQ(2, room1.neighbourCount) << "Expected room to have 2 neighbours";
+
+    Room& corridor2 = voronoi.getNeighbour(room0, 1);
+    ASSERT_EQ(2, corridor2.neighbourCount) << "Expected corridor to have 2 neighbours";
+    ASSERT_EQ(&room1, &voronoi.getNeighbour(corridor2, 1)) << "Expected second corridor to lead to same room as first";
+
+    ASSERT_EQ(&corridor1, &voronoi.getNeighbour(room1, 0)) << "Expected second room to lead back to corridor";
+    ASSERT_EQ(&corridor2, &voronoi.getNeighbour(room1, 1)) << "Expected second room to lead back to corridor";
+}
+
 TEST(State, Door) {
     State state;
 
