@@ -3,6 +3,7 @@
 
 #include "gtest/gtest.h"
 #include <fstream>
+#include <vector>
 
 Scores minimax(Bounds& parentBounds, State& state, int turn, void* sc, void* data) {
     Scores scores;
@@ -1202,6 +1203,59 @@ TEST(Bounding, ShouldNotPruneWhenInDifferentRegions) {
     ASSERT_FALSE(checkBounds(bounds, scores, state, 1)) << "Expected player 0's bound not to cause pruning";
 }
 
+class RoomExpectation {
+private:
+    Voronoi* voronoi;
+    const Room* room;
+    RoomExpectation* parent;
+    vector<RoomExpectation> neighbours;
+
+public:
+    RoomExpectation(Voronoi* p_voronoi, const Room* p_room, RoomExpectation* p_parent = 0) {
+        voronoi = p_voronoi;
+        room = p_room;
+        parent = p_parent;
+    }
+
+    RoomExpectation& expectRoom(int size) {
+        Room* neighbour = 0;
+
+        int index = neighbours.size();
+        int backPointerOffset = parent == 0 ? 0 : 1;
+        if (room == 0) {
+            // Due to an earlier failure - keep quiet
+        } else if (index + backPointerOffset >= room->neighbourCount) {
+            ADD_FAILURE() << "Room does not have enough neighbours";
+        } else {
+            neighbour = &voronoi->getNeighbour(*room, index + backPointerOffset);
+            EXPECT_EQ(size, neighbour->size);
+            EXPECT_GE(neighbour->neighbourCount, 1) << "Expected at least one neighbour";
+            Room* backPointer = &voronoi->getNeighbour(*neighbour, 0);
+            EXPECT_EQ(room, backPointer) << "Expected a link back to the original room";
+        }
+
+        neighbours.push_back(RoomExpectation(voronoi, neighbour, this));
+        return neighbours.at(index);
+    }
+
+    RoomExpectation& end() {
+        if (room != 0) {
+            int backPointerOffset = parent == 0 ? 0 : 1;
+            EXPECT_EQ(neighbours.size() + backPointerOffset, room->neighbourCount) << "Expected correct number of neighbours";
+        }
+        if (parent != 0) {
+            return *parent;
+        } else {
+            return *this;
+        }
+    }
+};
+
+RoomExpectation expectRoom(Voronoi& voronoi, const Room& room, int size) {
+    EXPECT_EQ(size, room.size);
+    return RoomExpectation(&voronoi, &room);
+}
+
 TEST(Voronoi, Rooms) {
     State state;
     state.numPlayers = 2;
@@ -1221,28 +1275,17 @@ TEST(Voronoi, Rooms) {
     voronoi.calculate(state);
 
     const Room& room0 = voronoi.startingRoom(0);
-    ASSERT_EQ(45, room0.size) << "Expected p0's starting room to have 45 cells";
-    ASSERT_EQ(2, room0.neighbourCount) << "Expected the starting room to have 2 neighbours";
 
-    const Room& corridor_0_1 = voronoi.getNeighbour(room0, 0);
-    ASSERT_EQ(1, corridor_0_1.size) << "Expected the corridor to have 1 cell";
-    ASSERT_EQ(2, corridor_0_1.neighbourCount) << "Expected the corridor to have 2 neighbours";
-    ASSERT_EQ(&voronoi.getNeighbour(corridor_0_1, 0), &room0) << "Expected the corridor to lead back to the original room";
-
-    const Room& room1 = voronoi.getNeighbour(corridor_0_1, 1);
-    ASSERT_EQ(24, room1.size) << "Expected the corridor to lead to a room with 24 cells";
-    ASSERT_EQ(1, room1.neighbourCount) << "Expected the room to have one neighbour";
-    ASSERT_EQ(&voronoi.getNeighbour(room1, 0), &corridor_0_1) << "Expected the room to open back onto the corridor";
-
-    const Room& corridor_0_2 = voronoi.getNeighbour(room0, 1);
-    ASSERT_EQ(1, corridor_0_2.size) << "Expected the starting room to lead to a corridor of 1 cell";
-    ASSERT_EQ(2, corridor_0_2.neighbourCount) << "Expected the corridor to have 2 neighbours";
-    ASSERT_EQ(&voronoi.getNeighbour(corridor_0_2, 0), &room0) << "Expected the corridor to lead back to the original room";
-
-    const Room& room2 = voronoi.getNeighbour(corridor_0_2, 1);
-    ASSERT_EQ(1, room2.size) << "Expected the corridor to lead to a room with 1 cell";
-    ASSERT_EQ(1, room2.neighbourCount) << "Expected the room to have only one neighbour";
-    ASSERT_EQ(&voronoi.getNeighbour(room2, 0), &corridor_0_2) << "Expected the room to open back onto the corridor";
+    expectRoom(voronoi, room0, 45)
+        .expectRoom(1)
+            .expectRoom(24)
+            .end()
+        .end()
+        .expectRoom(1)
+            .expectRoom(1)
+            .end()
+        .end()
+    .end();
 
     ASSERT_EQ(45 + 1 + 24, voronoi.playerRegionSize(0)) << "Expected p0's region to be the sum of his largest rooms";
 }
