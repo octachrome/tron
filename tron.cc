@@ -100,10 +100,6 @@ public:
         }
     }
 
-    inline bool isDoor(int x, int y) const {
-        return (occupied(x - 1, y) && occupied(x + 1, y)) || (occupied(x, y - 1) && occupied(x, y + 1));
-    }
-
     // Starting from (x,y), move towards xOffset OR yOffset, and find out whether we pass through a door
     inline bool isDoor(int x, int y, int xOffset, int yOffset) const {
         if (xOffset) {
@@ -116,7 +112,7 @@ public:
             bool right = occupied(x + 1, y) || occupied(x + 1, y + yOffset);
             return left && right;
         }
-        // should never be reached
+        cerr << "Illegal arguments to isDoor" << endl;
         return false;
     }
 
@@ -331,14 +327,16 @@ public:
             }
 
             for (int j = 0; j < 4; j++) {
-                int xx = x + xOffsets[j];
-                int yy = y + yOffsets[j];
+                int xOffset = xOffsets[j];
+                int yOffset = yOffsets[j];
+                int xx = x + xOffset;
+                int yy = y + yOffset;
                 if (!state.occupied(xx, yy)) {
                     Vor& neighbour = grid[xx][yy];
                     if (neighbour.player == 255) {
                         neighbour.player = vor.player;
                         neighbour.distance = vor.distance + 1;
-                        if (state.isDoor(xx, yy)) {
+                        if (state.isDoor(x, y, xOffset, yOffset)) {
                             neighbour.room = addRoom();
                             makeNeighbours(vor.room, neighbour.room);
                         } else {

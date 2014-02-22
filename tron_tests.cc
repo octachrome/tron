@@ -1220,26 +1220,31 @@ TEST(Voronoi, Rooms) {
     Voronoi voronoi;
     voronoi.calculate(state);
 
-    const Room& room = voronoi.startingRoom(0);
-    ASSERT_EQ(45, room.size) << "Expected p0's starting room to have 45 cells";
-    ASSERT_EQ(2, room.neighbourCount) << "Expected p0's starting room to have 2 neighbours";
+    const Room& room0 = voronoi.startingRoom(0);
+    ASSERT_EQ(45, room0.size) << "Expected p0's starting room to have 45 cells";
+    ASSERT_EQ(2, room0.neighbourCount) << "Expected the starting room to have 2 neighbours";
 
-    const Room& neighbour0 = voronoi.getNeighbour(room, 0);
-    ASSERT_EQ(25, neighbour0.size) << "Expected the first adjacent room to have 2 cells";
-    ASSERT_EQ(1, neighbour0.neighbourCount) << "Expected the first adjacent room to have one neighbour";
-    ASSERT_EQ(&voronoi.getNeighbour(neighbour0, 0), &room) << "Expected the neighbour to be the original room";
+    const Room& corridor_0_1 = voronoi.getNeighbour(room0, 0);
+    ASSERT_EQ(1, corridor_0_1.size) << "Expected the corridor to have 1 cell";
+    ASSERT_EQ(2, corridor_0_1.neighbourCount) << "Expected the corridor to have 2 neighbours";
+    ASSERT_EQ(&voronoi.getNeighbour(corridor_0_1, 0), &room0) << "Expected the corridor to lead back to the original room";
 
-    const Room& neighbour1 = voronoi.getNeighbour(room, 1);
-    ASSERT_EQ(1, neighbour1.size) << "Expected the second adjacent room to have 1 cell";
-    ASSERT_EQ(2, neighbour1.neighbourCount) << "Expected the second adjacent room to have 2 neighbours";
-    ASSERT_EQ(&voronoi.getNeighbour(neighbour1, 0), &room) << "Expected the first neighbour to be the original room";
+    const Room& room1 = voronoi.getNeighbour(corridor_0_1, 1);
+    ASSERT_EQ(24, room1.size) << "Expected the corridor to lead to a room with 24 cells";
+    ASSERT_EQ(1, room1.neighbourCount) << "Expected the room to have one neighbour";
+    ASSERT_EQ(&voronoi.getNeighbour(room1, 0), &corridor_0_1) << "Expected the room to open back onto the corridor";
 
-    const Room& neighbour1_0 = voronoi.getNeighbour(neighbour1, 1);
-    ASSERT_EQ(1, neighbour1_0.size) << "Expected the corridor to continue for another cell";
-    ASSERT_EQ(1, neighbour1_0.neighbourCount) << "Expected the corridor to have only one neighbour";
-    ASSERT_EQ(&voronoi.getNeighbour(neighbour1_0, 0), &neighbour1) << "Expected the neighbour to be back where we came from";
+    const Room& corridor_0_2 = voronoi.getNeighbour(room0, 1);
+    ASSERT_EQ(1, corridor_0_2.size) << "Expected the starting room to lead to a corridor of 1 cell";
+    ASSERT_EQ(2, corridor_0_2.neighbourCount) << "Expected the corridor to have 2 neighbours";
+    ASSERT_EQ(&voronoi.getNeighbour(corridor_0_2, 0), &room0) << "Expected the corridor to lead back to the original room";
 
-    ASSERT_EQ(25 + 45, voronoi.playerRegionSize(0)) << "Expected p0's region to be the sum of his largest regions";
+    const Room& room2 = voronoi.getNeighbour(corridor_0_2, 1);
+    ASSERT_EQ(1, room2.size) << "Expected the corridor to lead to a room with 1 cell";
+    ASSERT_EQ(1, room2.neighbourCount) << "Expected the room to have only one neighbour";
+    ASSERT_EQ(&voronoi.getNeighbour(room2, 0), &corridor_0_2) << "Expected the room to open back onto the corridor";
+
+    ASSERT_EQ(45 + 1 + 24, voronoi.playerRegionSize(0)) << "Expected p0's region to be the sum of his largest rooms";
 }
 
 TEST(Voronoi, RoomLoop) {
