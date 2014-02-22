@@ -1,32 +1,18 @@
+#include <algorithm>
 #include "tron.cc"
-
-Scores randRecursive(Bounds& bounds, State& state, int turn, void* sc, void* data) {
-    if (turn >= state.maxDepth) {
-        Scores scores;
-        for (int i = 0; i < state.numPlayers; i++) {
-            scores.scores[i] = rand() % 500;
-            scores.move = DOWN;
-        }
-        return scores;
-    } else {
-        return minimax(bounds, state, turn, sc, data);
-    }
-}
 
 Scores timedSearch(State& s, bool pruningEnabled) {
     State state = s;
     state.pruningEnabled = pruningEnabled;
 
-    Regions regions;
     Voronoi voronoi;
     Bounds bounds;
 
-    clock_t start = clock();
-    // Scores scores = minimax(bounds, state, 0, (void*) voronoiRecursive, &voronoi);
-    Scores scores = minimax(bounds, state, 0, (void*) randRecursive, 0);
-    // Scores scores = minimax(bounds, state, 0, (void*) regionsRecursive, &regions);
-    clock_t elapsed = clock() - start;
-    cerr << state.nodesSearched << " in " << (elapsed / CLOCKS_PER_MS) << "ms" << endl;
+    clock_t start = millis();
+    Scores scores;
+    minimax(scores, bounds, state, 0, (void*) voronoiRecursive, &voronoi);
+    clock_t elapsed = millis() - start;
+    cerr << state.nodesSearched << " in " << elapsed << "ms" << endl;
     return scores;
 }
 
@@ -52,8 +38,9 @@ int main() {
     State state;
     state.numPlayers = 2;
     state.thisPlayer = 0;
-    state.pruneMargin = 5;
-    state.maxDepth = 27;
+    state.maxDepth = 13;
+    state.pruningEnabled = false;
+    state.timeLimitEnabled = false;
 
     srand(time(0));
     randomlyPopulate(state);

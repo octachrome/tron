@@ -4,7 +4,7 @@ run_tron_tests: tron_tests
 	./tron_tests
 
 tron_tests: tron_tests.o gtest_main.a
-	g++ -g -o $@ $^ -lpthread -lrt
+	g++ -g -o $@ $^ -lrt
 
 tron_tests.o : tron.cc
 
@@ -13,7 +13,7 @@ profile: tron_prof
 	gprof tron_prof > tron_prof.out
 
 tron_prof: tron_prof.cc tron.cc
-	g++ -g -pg -o $@ tron_prof.cc -lpthread -DTRON_PROF
+	g++ -O3 -pg -o $@ tron_prof.cc -lrt -DTRON_PROF
 
 clean:
 	-rm *.o *.a *_tests prof
