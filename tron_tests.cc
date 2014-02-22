@@ -1249,7 +1249,7 @@ public:
 
     RoomExpectation& end() {
         if (room != 0) {
-            EXPECT_EQ(neighbours.size(), room->neighbourCount) << "Expected correct number of neighbours";
+            EXPECT_EQ((unsigned short) neighbours.size(), room->neighbourCount) << "Expected correct number of neighbours";
         }
         if (parent != 0) {
             return *parent;
@@ -1395,6 +1395,32 @@ TEST(State, TwoRoomsJoinedTwice) {
 
     ASSERT_EQ(&corridor1, &voronoi.getNeighbour(room1, 0)) << "Expected second room to lead back to corridor";
     ASSERT_EQ(&corridor2, &voronoi.getNeighbour(room1, 1)) << "Expected second room to lead back to corridor";
+}
+
+TEST(Voronoi, RoomJoinedToItself) {
+    State state;
+    state.numPlayers = 1;
+
+    readBoard(state,
+        ".0..*....A0..\n"
+        ".0..*.0..*0..\n"
+        ".0..*.0..*0..\n"
+        ".0..*....*0..\n"
+        ".0..*....*0..\n"
+        ".0000000000..\n");
+
+    Voronoi voronoi;
+    voronoi.calculate(state);
+
+    const Room& room0 = voronoi.startingRoom(0);
+    ASSERT_EQ(36, room0.size) << "Expected first room to take nearly all the space";
+    ASSERT_EQ(2, room0.neighbourCount) << "Expected two neighbours (both sides of the corridor)";
+
+    const Room& corridor = voronoi.getNeighbour(room0, 0);
+    ASSERT_EQ(&corridor, &voronoi.getNeighbour(room0, 1)) << "Expected both neigbours to be the corridor";
+
+    ASSERT_EQ(1, corridor.size);
+    ASSERT_EQ(2, corridor.neighbourCount);
 }
 
 TEST(State, Door) {

@@ -234,9 +234,9 @@ public:
 
 class Room {
 public:
-    unsigned short size;
-    unsigned short neighbourCount;
-    unsigned short neighbours[MAX_NEIGHBOURS];
+    short size;
+    short neighbourCount;
+    short neighbours[MAX_NEIGHBOURS];
     bool visited;
 };
 
@@ -249,9 +249,11 @@ private:
     int nodeCount;
     Room rooms[10000];
     int roomCount;
+    short equivalences[600];
 
     void clear() {
         memset(grid, 255, sizeof(grid));
+        memset(equivalences, -1, sizeof(equivalences));
         nodeCount = 0;
         roomCount = 0;
     }
@@ -271,6 +273,11 @@ private:
         return id;
     }
 
+    inline int room(int id) {
+        int id2 = equivalences[id];
+        return id2 >=0 ? id2 : id;
+    }
+
     inline void makeNeighbours(int fromId, int toId) {
         Room& from = rooms[fromId];
         if (from.neighbourCount >= MAX_NEIGHBOURS) {
@@ -278,6 +285,47 @@ private:
             return;
         }
         from.neighbours[from.neighbourCount++] = toId;
+    }
+
+    inline void combineRooms(int id1, int id2) {
+        if (id1 == id2) {
+            cerr << "Room cannot be combined with itself" << endl;
+            return;
+        }
+        if (equivalences[id1] == id2 || equivalences[id2] == id1) {
+            cerr << "Room " << id1 << " already combined with " << id2 << endl;
+            return;
+        }
+
+        int combinedId, oldId;
+        if (id1 < id2) {
+            combinedId = id1;
+            oldId = id2;
+        } else {
+            combinedId = id2;
+            oldId = id1;
+        }
+        Room& combined = rooms[combinedId];
+        Room& old = rooms[oldId];
+
+        combined.size += old.size;
+        old.size = -1;
+
+        for (int i = 0; i < old.neighbourCount; i++) {
+            int neighbourId = old.neighbours[i];
+            Room& neighbour = rooms[neighbourId];
+            for (int j = 0; j < neighbour.neighbourCount; j++) {
+                int roomId = neighbour.neighbours[j];
+                if (roomId == oldId) {
+                    neighbour.neighbours[j] = combinedId;
+                    break;
+                }
+            }
+            makeNeighbours(combinedId, neighbourId);
+        }
+
+        old.neighbourCount = 0;
+        equivalences[oldId] = combinedId;
     }
 
     int calculateRegionSize(Room& room) {
@@ -330,31 +378,39 @@ public:
                 int xx = x + xOffset;
                 int yy = y + yOffset;
                 if (!state.occupied(xx, yy)) {
+                    int vorRoom = room(vor.room);
                     Vor& neighbour = grid[xx][yy];
                     if (neighbour.player == 255) {
                         neighbour.player = vor.player;
                         neighbour.distance = vor.distance + 1;
                         if (state.isDoor(x, y, xOffset, yOffset)) {
                             neighbour.room = addRoom();
-                            makeNeighbours(vor.room, neighbour.room);
+                            makeNeighbours(vorRoom, neighbour.room);
                         } else {
-                            neighbour.room = vor.room;
+                            neighbour.room = vorRoom;
                         }
                         addNode(xx, yy);
                         Room& room = rooms[neighbour.room];
                         room.size++;
-                    } else if (vor.room != neighbour.room) {
-                        if (neighbour.player == vor.player) {
-                            makeNeighbours(vor.room, neighbour.room);
-                        } else if (neighbour.player != 254) {
-                            // Join the regions
-                            regions[neighbour.player] = regions[vor.player];
+                    } else {
+                        int neighbourRoom = room(neighbour.room);
+                        if (vorRoom != neighbourRoom) {
+                            if (neighbour.player == vor.player) {
+                                if (state.isDoor(x, y, xOffset, yOffset)) {
+                                    makeNeighbours(vorRoom, neighbourRoom);
+                                } else {
+                                    combineRooms(vorRoom, neighbourRoom);
+                                }
+                            } else if (neighbour.player != 254) {
+                                // Join the regions
+                                regions[neighbour.player] = regions[vor.player];
 
-                            if (neighbour.distance == vor.distance + 1) {
-                                // This is a shared boundary: remove it from the other player's territory
-                                rooms[neighbour.room].size--;
-                                // This cell is no man's land
-                                neighbour.player = 254;
+                                if (neighbour.distance == vor.distance + 1) {
+                                    // This is a shared boundary: remove it from the other player's territory
+                                    rooms[neighbourRoom].size--;
+                                    // This cell is no man's land
+                                    neighbour.player = 254;
+                                }
                             }
                         }
                     }
