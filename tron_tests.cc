@@ -1217,21 +1217,30 @@ public:
         parent = p_parent;
     }
 
+    RoomExpectation& expectBackPointer() {
+        if (room->neighbourCount == 0) {
+            ADD_FAILURE() << "Room does not have enough neighbours";
+        } else {
+            Room* backPointer = &voronoi->getNeighbour(*room, 0);
+            EXPECT_EQ(parent->room, backPointer) << "Expected a link back to the original room";
+
+            neighbours.push_back(RoomExpectation(voronoi, 0, this));
+        }
+
+        return *this;
+    }
+
     RoomExpectation& expectRoom(int size) {
         Room* neighbour = 0;
 
         int index = neighbours.size();
-        int backPointerOffset = parent == 0 ? 0 : 1;
         if (room == 0) {
             // Due to an earlier failure - keep quiet
-        } else if (index + backPointerOffset >= room->neighbourCount) {
+        } else if (index >= room->neighbourCount) {
             ADD_FAILURE() << "Room does not have enough neighbours";
         } else {
-            neighbour = &voronoi->getNeighbour(*room, index + backPointerOffset);
+            neighbour = &voronoi->getNeighbour(*room, index);
             EXPECT_EQ(size, neighbour->size);
-            EXPECT_GE(neighbour->neighbourCount, 1) << "Expected at least one neighbour";
-            Room* backPointer = &voronoi->getNeighbour(*neighbour, 0);
-            EXPECT_EQ(room, backPointer) << "Expected a link back to the original room";
         }
 
         neighbours.push_back(RoomExpectation(voronoi, neighbour, this));
@@ -1240,8 +1249,7 @@ public:
 
     RoomExpectation& end() {
         if (room != 0) {
-            int backPointerOffset = parent == 0 ? 0 : 1;
-            EXPECT_EQ(neighbours.size() + backPointerOffset, room->neighbourCount) << "Expected correct number of neighbours";
+            EXPECT_EQ(neighbours.size(), room->neighbourCount) << "Expected correct number of neighbours";
         }
         if (parent != 0) {
             return *parent;
@@ -1278,11 +1286,15 @@ TEST(Voronoi, Rooms) {
 
     expectRoom(voronoi, room0, 45)
         .expectRoom(1)
+            .expectBackPointer()
             .expectRoom(24)
+                .expectBackPointer()
             .end()
         .end()
         .expectRoom(1)
+            .expectBackPointer()
             .expectRoom(1)
+                .expectBackPointer()
             .end()
         .end()
     .end();
@@ -1310,6 +1322,45 @@ TEST(Voronoi, RoomLoop) {
     voronoi.calculate(state);
 
     ASSERT_EQ(115, voronoi.playerRegionSize(0)) << "Expected p0's region to be the sum of all rooms";
+}
+
+TEST(Voronoi, PlayerOnBoundary) {
+    State state;
+    state.numPlayers = 2;
+
+    readBoard(state,
+        ".0..0....*....11111111..*....*\n"
+        ".0..0....*....1..1.*.1..*....*\n"
+        ".0A00....*....1..B.*.1..*....*\n"
+        ".0..0....*....111.1111..*....*\n"
+        ".0..0....*....*.1....1..*....*\n"
+        ".0..0....*....*.1....1..*....*\n"
+        ".0000....*....*.111111..*....*\n");
+
+    Voronoi voronoi;
+    voronoi.calculate(state);
+
+    const Room& room0 = voronoi.startingRoom(0);
+
+    expectRoom(voronoi, room0, 0)
+        .expectRoom(6)
+        .end()
+        .expectRoom(4)
+        .end()
+    .end();
+
+    const Room& room1 = voronoi.startingRoom(1);
+
+    expectRoom(voronoi, room1, 0)
+        .expectRoom(6)
+        .end()
+        .expectRoom(4)
+        .end()
+        .expectRoom(1)
+            .expectRoom(8)
+            .expectBackPointer()
+        .end()
+    .end();
 }
 
 TEST(State, Door) {
