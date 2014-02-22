@@ -1554,6 +1554,46 @@ TEST(Voronoi, CombineWithACombinedRoom2) {
     ASSERT_EQ(&room0, &voronoi.getNeighbour(corridor2, 1));
 }
 
+TEST(Voronoi, SharedRoomWithAdjacentRooms) {
+    State state;
+    state.numPlayers = 2;
+
+    readBoard(state,
+        "000000......0..\n"
+        "0....0......0..\n"
+        "0....0......0..\n"
+        "00...0000...0..\n"
+        "0..00.*..00.0..\n"
+        "0.....*.....0..\n"
+        "0A....*....B0..\n"
+        "0.....*.....0..\n"
+        "0000000000..0..\n"
+        ".........0000..\n");
+
+    Voronoi voronoi;
+    voronoi.calculate(state);
+    voronoi.print();
+
+    const Room& room0 = voronoi.startingRoom(0);
+
+    expectRoom(voronoi, room0, 17)
+        .expectRoom(11)
+            .expectBackPointer()
+        .end()
+    .end();
+
+    const Room& room1 = voronoi.startingRoom(1);
+
+    expectRoom(voronoi, room1, 18)
+        .expectRoom(1)
+            .expectBackPointer()
+            .expectRoom(21)
+                .expectBackPointer()
+            .end()
+        .end()
+    .end();
+}
+
 TEST(State, Door) {
     State state;
 
