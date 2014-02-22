@@ -277,18 +277,8 @@ private:
         return id;
     }
 
-    inline void makeNeighbours(int roomId1, int roomId2) {
-        makeNeighboursOneWay(roomId1, roomId2);
-        makeNeighboursOneWay(roomId2, roomId1);
-    }
-
-    inline void makeNeighboursOneWay(int fromId, int toId) {
+    inline void makeNeighbours(int fromId, int toId) {
         Room& from = rooms[fromId];
-        for (int i = 0; i < from.neighbourCount; i++) {
-            if (from.neighbours[i] == toId) {
-                return;
-            }
-        }
         if (from.neighbourCount >= MAX_NEIGHBOURS) {
             cerr << "Neighbour limit reached" << endl;
             return;
