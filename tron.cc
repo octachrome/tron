@@ -197,8 +197,9 @@ public:
     }
 
     void print() {
-        for (int y = -1; y <= HEIGHT; y++) {
-            for (int x = -1; x <= WIDTH; x++) {
+        for (int y = 0; y < HEIGHT; y++) {
+            cerr << "\"";
+            for (int x = 0; x < WIDTH; x++) {
                 int player = -1;
                 for (int i = 0; i < numPlayers; i++) {
                     if (x == players[i].x && y == players[i].y) {
@@ -207,14 +208,19 @@ public:
                     }
                 }
                 if (player >= 0) {
-                    cerr << player;
-                } else if (occupied(x, y)) {
-                    cerr << '#';
+                    cerr << char('A' + player);
                 } else {
-                    cerr << ' ';
+                    unsigned char b = grid[x][y];
+                    if (b == 0) {
+                        cerr << ' ';
+                    } else {
+                        int p = 0;
+                        while (b >>= 1) p++;
+                        cerr << p;
+                    }
                 }
             }
-            cerr << endl;
+            cerr << "\\n\"" << endl;
         }
     }
 };
@@ -550,7 +556,6 @@ public:
 void calculateScores(Scores& scores, Voronoi& voronoi, State& state) {
     int occupants[PLAYERS];
     int totalSize[PLAYERS];
-    int playersByRegion[PLAYERS];
     int maxSize = -1;
 
     voronoi.calculate(state);
