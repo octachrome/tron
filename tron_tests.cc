@@ -4,6 +4,7 @@
 #include "gtest/gtest.h"
 #include <fstream>
 #include <vector>
+#include <algorithm>
 
 Scores minimax(Bounds& parentBounds, State& state, int turn, void* sc, void* data) {
     Scores scores;
@@ -767,6 +768,37 @@ TEST(State, FirstPlayersFullTrailShouldBeOccupied) {
     ASSERT_TRUE(state.occupied(0, 0)) << "Expected p1 to occupy 5,5";
 }
 
+TEST(State, Door) {
+    State state;
+
+    readBoard(state,
+        "....*....0....*....0....*....*\n"
+        ".0.0*....0....*....0....*....*\n"
+        "..A.*....B....*...C*....0D...*\n"
+        "....*....*0...*....*0...*.0..*\n"
+        "....*....*0...*....*0...*....*\n");
+
+    ASSERT_FALSE(state.isDoor(2, 2, 1, 0)) << "Expected no door right of p0";
+    ASSERT_FALSE(state.isDoor(2, 2, -1, 0)) << "Expected no door left of p0";
+    ASSERT_FALSE(state.isDoor(2, 2, 0, 1)) << "Expected no door below p0";
+    ASSERT_TRUE(state.isDoor(2, 2, 0, -1)) << "Expected a door above p0";
+
+    ASSERT_TRUE(state.isDoor(9, 2, 1, 0)) << "Expected a door right of p1";
+    ASSERT_FALSE(state.isDoor(9, 2, -1, 0)) << "Expected no door left of p1";
+    ASSERT_FALSE(state.isDoor(9, 2, 0, 1)) << "Expected no door below p1";
+    ASSERT_FALSE(state.isDoor(9, 2, 0, -1)) << "Expected no door above p1";
+
+    ASSERT_FALSE(state.isDoor(18, 2, 1, 0)) << "Expected no door right of p2";
+    ASSERT_FALSE(state.isDoor(18, 2, -1, 0)) << "Expected no door left of p2";
+    ASSERT_FALSE(state.isDoor(18, 2, 0, 1)) << "Expected no door below p2";
+    ASSERT_FALSE(state.isDoor(18, 2, 0, -1)) << "Expected no door above p2";
+
+    ASSERT_FALSE(state.isDoor(25, 2, 1, 0)) << "Expected no door right of p3";
+    ASSERT_FALSE(state.isDoor(25, 2, -1, 0)) << "Expected no door left of p3";
+    ASSERT_TRUE(state.isDoor(25, 2, 0, 1)) << "Expected a door below p3";
+    ASSERT_FALSE(state.isDoor(25, 2, 0, -1)) << "Expected no door above p3";
+}
+
 TEST(Minimax, BadDecision2) {
     State state;
     state.numPlayers = 4;
@@ -1203,65 +1235,39 @@ TEST(Bounding, ShouldNotPruneWhenInDifferentRegions) {
     ASSERT_FALSE(checkBounds(bounds, scores, state, 1)) << "Expected player 0's bound not to cause pruning";
 }
 
-class RoomExpectation {
-private:
-    Voronoi* voronoi;
-    const Room* room;
-    RoomExpectation* parent;
-    vector<RoomExpectation> neighbours;
-
-public:
-    RoomExpectation(Voronoi* p_voronoi, const Room* p_room, RoomExpectation* p_parent = 0) {
-        voronoi = p_voronoi;
-        room = p_room;
-        parent = p_parent;
+inline void indent(int depth, ostream& os) {
+    for (int i = 0; i < depth; i++) {
+        os << "  ";
     }
+}
 
-    RoomExpectation& expectBackPointer() {
-        if (room->neighbourCount == 0) {
-            ADD_FAILURE() << "Room does not have enough neighbours";
+void printRoom(Voronoi& voronoi, const Room& room, int depth, const Room* parent, vector<const Room*>& seen, ostream& os) {
+    vector<const Room*>::iterator i = find(seen.begin(), seen.end(), &room);
+    if (i != seen.end()) {
+        indent(depth, os);
+        os << "    seen at [" << (i - seen.begin()) << "]" << endl;
+        return;
+    }
+    os << "[" << seen.size() << "] ";
+    indent(depth, os);
+    os << "room of size " << room.size << endl;
+    seen.push_back(&room);
+    for (int i = 0; i < room.neighbourCount; i++) {
+        const Room& neighbour = voronoi.getNeighbour(room, i);
+        if (&neighbour == parent) {
+            indent(depth + 1, os);
+            os << "    backpointer" << endl;
         } else {
-            Room* backPointer = &voronoi->getNeighbour(*room, 0);
-            EXPECT_EQ(parent->room, backPointer) << "Expected a link back to the original room";
-
-            neighbours.push_back(RoomExpectation(voronoi, 0, this));
-        }
-
-        return *this;
-    }
-
-    RoomExpectation& expectRoom(int size) {
-        Room* neighbour = 0;
-
-        int index = neighbours.size();
-        if (room == 0) {
-            // Due to an earlier failure - keep quiet
-        } else if (index >= room->neighbourCount) {
-            ADD_FAILURE() << "Room does not have enough neighbours";
-        } else {
-            neighbour = &voronoi->getNeighbour(*room, index);
-            EXPECT_EQ(size, neighbour->size);
-        }
-
-        neighbours.push_back(RoomExpectation(voronoi, neighbour, this));
-        return neighbours.at(index);
-    }
-
-    RoomExpectation& end() {
-        if (room != 0) {
-            EXPECT_EQ((unsigned short) neighbours.size(), room->neighbourCount) << "Expected correct number of neighbours";
-        }
-        if (parent != 0) {
-            return *parent;
-        } else {
-            return *this;
+            printRoom(voronoi, neighbour, depth + 1, &room, seen, os);
         }
     }
-};
+}
 
-RoomExpectation expectRoom(Voronoi& voronoi, const Room& room, int size) {
-    EXPECT_EQ(size, room.size);
-    return RoomExpectation(&voronoi, &room);
+string roomString(Voronoi& voronoi, const Room& room) {
+    ostringstream os;
+    vector<const Room*> seen;
+    printRoom(voronoi, room, 0, 0, seen, os);
+    return os.str();
 }
 
 TEST(Voronoi, Rooms) {
@@ -1284,20 +1290,17 @@ TEST(Voronoi, Rooms) {
 
     const Room& room0 = voronoi.startingRoom(0);
 
-    expectRoom(voronoi, room0, 45)
-        .expectRoom(1)
-            .expectBackPointer()
-            .expectRoom(24)
-                .expectBackPointer()
-            .end()
-        .end()
-        .expectRoom(1)
-            .expectBackPointer()
-            .expectRoom(1)
-                .expectBackPointer()
-            .end()
-        .end()
-    .end();
+    ASSERT_EQ(string(
+        "[0] room of size 45\n"
+        "[1]   room of size 1\n"
+        "        backpointer\n"
+        "[2]     room of size 24\n"
+        "          backpointer\n"
+        "[3]   room of size 1\n"
+        "        backpointer\n"
+        "[4]     room of size 1\n"
+        "          backpointer\n"),
+        roomString(voronoi, room0));
 
     ASSERT_EQ(45 + 1 + 24, voronoi.playerRegionSize(0)) << "Expected p0's region to be the sum of his largest rooms";
 }
@@ -1342,28 +1345,25 @@ TEST(Voronoi, PlayerOnBoundary) {
 
     const Room& room0 = voronoi.startingRoom(0);
 
-    expectRoom(voronoi, room0, 0)
-        .expectRoom(6)
-        .end()
-        .expectRoom(4)
-        .end()
-    .end();
+    ASSERT_EQ(string(
+        "[0] room of size 0\n"
+        "[1]   room of size 6\n"
+        "[2]   room of size 4\n"),
+        roomString(voronoi, room0));
 
     const Room& room1 = voronoi.startingRoom(1);
 
-    expectRoom(voronoi, room1, 0)
-        .expectRoom(6)
-        .end()
-        .expectRoom(4)
-        .end()
-        .expectRoom(1)
-            .expectRoom(8)
-            .expectBackPointer()
-        .end()
-    .end();
+    ASSERT_EQ(string(
+        "[0] room of size 0\n"
+        "[1]   room of size 6\n"
+        "[2]   room of size 4\n"
+        "[3]   room of size 1\n"
+        "[4]     room of size 8\n"
+        "          backpointer\n"),
+        roomString(voronoi, room1));
 }
 
-TEST(State, TwoRoomsJoinedTwice) {
+TEST(Voronoi, TwoRoomsJoinedTwice) {
     State state;
     state.numPlayers = 1;
 
@@ -1379,22 +1379,18 @@ TEST(State, TwoRoomsJoinedTwice) {
     voronoi.calculate(state);
 
     const Room& room0 = voronoi.startingRoom(0);
-    ASSERT_EQ(15, room0.size) << "Expected room to have 15 cells";
-    ASSERT_EQ(2, room0.neighbourCount) << "Expected room to have 2 neighbours";
 
-    Room& corridor1 = voronoi.getNeighbour(room0, 0);
-    ASSERT_EQ(2, corridor1.neighbourCount) << "Expected corridor to have 2 neighbours";
-
-    Room& room1 = voronoi.getNeighbour(corridor1, 1);
-    ASSERT_EQ(15, room1.size) << "Expected room to have 16 cells";
-    ASSERT_EQ(2, room1.neighbourCount) << "Expected room to have 2 neighbours";
-
-    Room& corridor2 = voronoi.getNeighbour(room0, 1);
-    ASSERT_EQ(2, corridor2.neighbourCount) << "Expected corridor to have 2 neighbours";
-    ASSERT_EQ(&room1, &voronoi.getNeighbour(corridor2, 1)) << "Expected second corridor to lead to same room as first";
-
-    ASSERT_EQ(&corridor1, &voronoi.getNeighbour(room1, 0)) << "Expected second room to lead back to corridor";
-    ASSERT_EQ(&corridor2, &voronoi.getNeighbour(room1, 1)) << "Expected second room to lead back to corridor";
+    ASSERT_EQ(string(
+        "[0] room of size 15\n"
+        "[1]   room of size 1\n"
+        "[2]     room of size 16\n"
+        "          backpointer\n"
+        "[3]       room of size 1\n"
+        "            backpointer\n"
+        "            seen at [0]\n"
+        "        backpointer\n"
+        "      seen at [3]\n"),
+        roomString(voronoi, room0));
 }
 
 TEST(Voronoi, RoomJoinedToItself) {
@@ -1413,14 +1409,14 @@ TEST(Voronoi, RoomJoinedToItself) {
     voronoi.calculate(state);
 
     const Room& room0 = voronoi.startingRoom(0);
-    ASSERT_EQ(36, room0.size) << "Expected first room to take nearly all the space";
-    ASSERT_EQ(2, room0.neighbourCount) << "Expected two neighbours (both sides of the corridor)";
 
-    const Room& corridor = voronoi.getNeighbour(room0, 0);
-    ASSERT_EQ(&corridor, &voronoi.getNeighbour(room0, 1)) << "Expected both neigbours to be the corridor";
-
-    ASSERT_EQ(1, corridor.size);
-    ASSERT_EQ(2, corridor.neighbourCount);
+    ASSERT_EQ(string(
+        "[0] room of size 36\n"
+        "[1]   room of size 1\n"
+        "        backpointer\n"
+        "        backpointer\n"     // both ends of the corridor lead to the room we were just in
+        "      seen at [1]\n"),     // the room has two entrances onto the same corridor
+        roomString(voronoi, room0));
 }
 
 TEST(Voronoi, ThreeWayRoomCombining) {
@@ -1439,25 +1435,18 @@ TEST(Voronoi, ThreeWayRoomCombining) {
     voronoi.calculate(state);
 
     const Room& room0 = voronoi.startingRoom(0);
-    ASSERT_EQ(63, room0.size) << "Expected first room to take nearly all the space";
-    ASSERT_EQ(4, room0.neighbourCount);
 
-    const Room& corridor1 = voronoi.getNeighbour(room0, 0);
-    ASSERT_EQ(1, corridor1.size);
-    ASSERT_EQ(&corridor1, &voronoi.getNeighbour(room0, 2));
-
-    const Room& corridor2 = voronoi.getNeighbour(room0, 1);
-    ASSERT_EQ(1, corridor2.size);
-    ASSERT_EQ(&corridor2, &voronoi.getNeighbour(room0, 3));
-    ASSERT_NE(&corridor1, &corridor2);
-
-    ASSERT_EQ(2, corridor1.neighbourCount);
-    ASSERT_EQ(&room0, &voronoi.getNeighbour(corridor1, 0));
-    ASSERT_EQ(&room0, &voronoi.getNeighbour(corridor1, 1));
-
-    ASSERT_EQ(2, corridor2.neighbourCount);
-    ASSERT_EQ(&room0, &voronoi.getNeighbour(corridor2, 0));
-    ASSERT_EQ(&room0, &voronoi.getNeighbour(corridor2, 1));
+    ASSERT_EQ(string(
+        "[0] room of size 63\n"
+        "[1]   room of size 1\n"
+        "        backpointer\n"
+        "        backpointer\n"     // both ends of the corridor lead to the room we were just in
+        "[2]   room of size 1\n"
+        "        backpointer\n"
+        "        backpointer\n"
+        "      seen at [1]\n"       // the room has two entrances onto the same corridor
+        "      seen at [2]\n"),
+        roomString(voronoi, room0));
 }
 
 TEST(Voronoi, CombineWithACombinedRoom) {
@@ -1484,26 +1473,18 @@ TEST(Voronoi, CombineWithACombinedRoom) {
     voronoi.calculate(state);
 
     const Room& room0 = voronoi.startingRoom(0);
-    ASSERT_EQ(129, room0.size) << "Expected first room to take nearly all the space";
-    ASSERT_EQ(4, room0.neighbourCount);
 
-    const Room& corridor1 = voronoi.getNeighbour(room0, 0);
-    ASSERT_EQ(1, corridor1.size);
-    ASSERT_EQ(&corridor1, &voronoi.getNeighbour(room0, 1));
-
-    const Room& corridor2 = voronoi.getNeighbour(room0, 2);
-    ASSERT_EQ(1, corridor2.size);
-    ASSERT_EQ(&corridor2, &voronoi.getNeighbour(room0, 3));
-
-    ASSERT_NE(&corridor1, &corridor2);
-
-    ASSERT_EQ(2, corridor1.neighbourCount);
-    ASSERT_EQ(&room0, &voronoi.getNeighbour(corridor1, 0));
-    ASSERT_EQ(&room0, &voronoi.getNeighbour(corridor1, 1));
-
-    ASSERT_EQ(2, corridor2.neighbourCount);
-    ASSERT_EQ(&room0, &voronoi.getNeighbour(corridor2, 0));
-    ASSERT_EQ(&room0, &voronoi.getNeighbour(corridor2, 1));
+    ASSERT_EQ(string(
+        "[0] room of size 129\n"
+        "[1]   room of size 1\n"
+        "        backpointer\n"
+        "        backpointer\n"     // both ends of the corridor lead to the room we were just in
+        "      seen at [1]\n"       // the room has two entrances onto the same corridor
+        "[2]   room of size 1\n"
+        "        backpointer\n"
+        "        backpointer\n"     // ditto
+        "      seen at [2]\n"),
+        roomString(voronoi, room0));
 }
 
 TEST(Voronoi, CombineWithACombinedRoom2) {
@@ -1533,25 +1514,18 @@ TEST(Voronoi, CombineWithACombinedRoom2) {
     voronoi.calculate(state);
 
     const Room& room0 = voronoi.startingRoom(0);
-    ASSERT_EQ(151, room0.size) << "Expected first room to take nearly all the space";
-    ASSERT_EQ(4, room0.neighbourCount);
 
-    const Room& corridor1 = voronoi.getNeighbour(room0, 0);
-    ASSERT_EQ(1, corridor1.size);
-    ASSERT_EQ(&corridor1, &voronoi.getNeighbour(room0, 2));
-
-    const Room& corridor2 = voronoi.getNeighbour(room0, 1);
-    ASSERT_EQ(1, corridor2.size);
-    ASSERT_EQ(&corridor2, &voronoi.getNeighbour(room0, 3));
-    ASSERT_NE(&corridor1, &corridor2);
-
-    ASSERT_EQ(2, corridor1.neighbourCount);
-    ASSERT_EQ(&room0, &voronoi.getNeighbour(corridor1, 0));
-    ASSERT_EQ(&room0, &voronoi.getNeighbour(corridor1, 1));
-
-    ASSERT_EQ(2, corridor2.neighbourCount);
-    ASSERT_EQ(&room0, &voronoi.getNeighbour(corridor2, 0));
-    ASSERT_EQ(&room0, &voronoi.getNeighbour(corridor2, 1));
+    ASSERT_EQ(string(
+        "[0] room of size 151\n"
+        "[1]   room of size 1\n"
+        "        backpointer\n"
+        "        backpointer\n"     // both ends of the corridor lead to the room we were just in
+        "[2]   room of size 1\n"
+        "        backpointer\n"
+        "        backpointer\n"
+        "      seen at [1]\n"       // the room has two entrances onto the same corridor
+        "      seen at [2]\n"),
+        roomString(voronoi, room0));
 }
 
 TEST(Voronoi, SharedRoomWithAdjacentRooms) {
@@ -1572,55 +1546,22 @@ TEST(Voronoi, SharedRoomWithAdjacentRooms) {
 
     Voronoi voronoi;
     voronoi.calculate(state);
-    voronoi.print();
 
     const Room& room0 = voronoi.startingRoom(0);
 
-    expectRoom(voronoi, room0, 17)
-        .expectRoom(11)
-            .expectBackPointer()
-        .end()
-    .end();
+    ASSERT_EQ(string(
+        "[0] room of size 17\n"
+        "[1]   room of size 11\n"
+        "        backpointer\n"),
+        roomString(voronoi, room0));
 
     const Room& room1 = voronoi.startingRoom(1);
 
-    expectRoom(voronoi, room1, 18)
-        .expectRoom(1)
-            .expectBackPointer()
-            .expectRoom(21)
-                .expectBackPointer()
-            .end()
-        .end()
-    .end();
-}
-
-TEST(State, Door) {
-    State state;
-
-    readBoard(state,
-        "....*....0....*....0....*....*\n"
-        ".0.0*....0....*....0....*....*\n"
-        "..A.*....B....*...C*....0D...*\n"
-        "....*....*0...*....*0...*.0..*\n"
-        "....*....*0...*....*0...*....*\n");
-
-    ASSERT_FALSE(state.isDoor(2, 2, 1, 0)) << "Expected no door right of p0";
-    ASSERT_FALSE(state.isDoor(2, 2, -1, 0)) << "Expected no door left of p0";
-    ASSERT_FALSE(state.isDoor(2, 2, 0, 1)) << "Expected no door below p0";
-    ASSERT_TRUE(state.isDoor(2, 2, 0, -1)) << "Expected a door above p0";
-
-    ASSERT_TRUE(state.isDoor(9, 2, 1, 0)) << "Expected a door right of p1";
-    ASSERT_FALSE(state.isDoor(9, 2, -1, 0)) << "Expected no door left of p1";
-    ASSERT_FALSE(state.isDoor(9, 2, 0, 1)) << "Expected no door below p1";
-    ASSERT_FALSE(state.isDoor(9, 2, 0, -1)) << "Expected no door above p1";
-
-    ASSERT_FALSE(state.isDoor(18, 2, 1, 0)) << "Expected no door right of p2";
-    ASSERT_FALSE(state.isDoor(18, 2, -1, 0)) << "Expected no door left of p2";
-    ASSERT_FALSE(state.isDoor(18, 2, 0, 1)) << "Expected no door below p2";
-    ASSERT_FALSE(state.isDoor(18, 2, 0, -1)) << "Expected no door above p2";
-
-    ASSERT_FALSE(state.isDoor(25, 2, 1, 0)) << "Expected no door right of p3";
-    ASSERT_FALSE(state.isDoor(25, 2, -1, 0)) << "Expected no door left of p3";
-    ASSERT_TRUE(state.isDoor(25, 2, 0, 1)) << "Expected a door below p3";
-    ASSERT_FALSE(state.isDoor(25, 2, 0, -1)) << "Expected no door above p3";
+    ASSERT_EQ(string(
+        "[0] room of size 18\n"
+        "[1]   room of size 1\n"
+        "        backpointer\n"
+        "[2]     room of size 21\n"
+        "          backpointer\n"),
+        roomString(voronoi, room1));
 }
