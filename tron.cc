@@ -284,6 +284,9 @@ private:
             cerr << "Neighbour limit reached" << endl;
             return;
         }
+        if (rooms[toId].size < 0) {
+            cerr << "Making neigbour with dead room" << endl;
+        }
         from.neighbours[from.neighbourCount++] = toId;
     }
 
@@ -311,6 +314,15 @@ private:
         combined.size += old.size;
         old.size = -1;
 
+        // Delete any neighbour relationship between new room and old, by swapping for the last neighbour in the list
+        for (int i = 0; i < combined.neighbourCount; i++) {
+            if (combined.neighbours[i] == oldId) {
+                combined.neighbours[i] = combined.neighbours[combined.neighbourCount - 1];
+                combined.neighbourCount--;
+                i--;
+            }
+        }
+        // Follow the old neighbour relationships, fix the inverse relationships, and add as a neighbour of the new room
         for (int i = 0; i < old.neighbourCount; i++) {
             int neighbourId = old.neighbours[i];
             Room& neighbour = rooms[neighbourId];
@@ -441,7 +453,7 @@ public:
         for (int y = 0; y <= MAX_Y; y++) {
             for (int x = 0; x <= MAX_X; x++) {
                 Vor vor = get(x, y);
-                cerr << setw(3) << (int(vor.room) > 16 ? 16 : int(vor.room));
+                cerr << setw(3) << (int(vor.room) > 255 ? 255 : int(vor.room));
             }
             cerr << endl;
         }

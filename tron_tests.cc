@@ -1565,3 +1565,43 @@ TEST(Voronoi, SharedRoomWithAdjacentRooms) {
         "          backpointer\n"),
         roomString(voronoi, room1));
 }
+
+TEST(Voronoi, PlayerOnBoundary2) {
+    State state;
+    state.numPlayers = 2;
+
+    readBoard(state,
+        "000000......0..\n"
+        "0....0......0..\n"
+        "00...0000...0..\n"
+        "0A.00.*..0.B0..\n"
+        "0.....*.....0..\n"
+        "0.....*.....0..\n"
+        "0000000000..0..\n"
+        ".........0000..\n");
+
+    Voronoi voronoi;
+    voronoi.calculate(state);
+
+    const Room& room0 = voronoi.startingRoom(0);
+
+    // A is in the lower of two adjoining rooms. If there were a room further down, he would
+    // not be able to fill both this room and the upper room: he must choose one.
+    ASSERT_EQ(string(
+        "[0] room of size 12\n"
+        "[1]   room of size 6\n"
+        "        backpointer\n"
+        "[2]     room of size 1\n"
+        "          backpointer\n"),
+        roomString(voronoi, room0));
+
+    const Room& room1 = voronoi.startingRoom(1);
+
+    // B is in one large room. He can either fill the upper space, then fill the lower space,
+    // then exit to another room joined to the lower; he can fill the lower space, then fill
+    // the upper space, then exit to another room joined to the upper space. If they were two
+    // rooms, he could only fill one or the other before exiting.
+    ASSERT_EQ(string(
+        "[0] room of size 30\n"),
+        roomString(voronoi, room1));
+}
