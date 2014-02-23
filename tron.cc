@@ -280,8 +280,10 @@ private:
     }
 
     inline int room(int id) {
-        int id2 = equivalences[id];
-        return id2 >=0 ? id2 : id;
+        while (equivalences[id] >= 0) {
+            id = equivalences[id];
+        }
+        return id;
     }
 
     inline void makeNeighbours(int fromId, int toId) {
