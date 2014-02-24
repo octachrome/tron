@@ -85,6 +85,14 @@ public:
         timeLimitReached = false;
     }
 
+    inline int getMaxDepth() {
+        if (isTimeLimitReached()) {
+            return 1;
+        } else {
+            return maxDepth;
+        }
+    }
+
     inline bool isTimeLimitReached() {
         if (!timeLimitEnabled) {
             return false;
@@ -279,22 +287,28 @@ private:
         return id;
     }
 
-    inline int room(int id) {
+    inline int trueId(int id) {
         while (equivalences[id] >= 0) {
             id = equivalences[id];
         }
         return id;
     }
 
+    inline Room& room(int id) {
+        return rooms[trueId(id)];
+    }
+
     inline void makeNeighbours(int fromId, int toId) {
-        Room& from = rooms[fromId];
+        Room& from = room(fromId);
         if (from.neighbourCount >= MAX_NEIGHBOURS) {
             cerr << "Neighbour limit reached" << endl;
             return;
         }
-        if (rooms[toId].size < 0) {
+#ifdef TRON_TRACE
+        if (room(toId).size < 0) {
             cerr << "Making neigbour with dead room" << endl;
         }
+#endif
         from.neighbours[from.neighbourCount++] = toId;
     }
 
@@ -303,11 +317,6 @@ private:
             cerr << "Room cannot be combined with itself" << endl;
             return;
         }
-        if (equivalences[id1] == id2 || equivalences[id2] == id1) {
-            cerr << "Room " << id1 << " already combined with " << id2 << endl;
-            return;
-        }
-
         int combinedId, oldId;
         if (id1 < id2) {
             combinedId = id1;
@@ -316,8 +325,13 @@ private:
             combinedId = id2;
             oldId = id1;
         }
-        Room& combined = rooms[combinedId];
-        Room& old = rooms[oldId];
+        if (trueId(oldId) == trueId(combinedId)) {
+            cerr << "Room " << oldId << " already combined with " << combinedId << endl;
+            return;
+        }
+
+        Room& combined = room(combinedId);
+        Room& old = room(oldId);
 
         combined.size += old.size;
         old.size = -1;
@@ -333,14 +347,6 @@ private:
         // Follow the old neighbour relationships, fix the inverse relationships, and add as a neighbour of the new room
         for (int i = 0; i < old.neighbourCount; i++) {
             int neighbourId = old.neighbours[i];
-            Room& neighbour = rooms[neighbourId];
-            for (int j = 0; j < neighbour.neighbourCount; j++) {
-                int roomId = neighbour.neighbours[j];
-                if (roomId == oldId) {
-                    neighbour.neighbours[j] = combinedId;
-                    break;
-                }
-            }
             makeNeighbours(combinedId, neighbourId);
         }
 
@@ -351,6 +357,9 @@ private:
     int calculateRegionSize(Room& room) {
         if (room.visited) {
             return 0;
+        }
+        if (room.size < 0) {
+            cerr << "Dead room while calculating region size" << endl;
         }
         room.visited = true;
         int maxNeighbourSize = 0;
@@ -398,7 +407,7 @@ public:
                 int xx = x + xOffset;
                 int yy = y + yOffset;
                 if (!state.occupied(xx, yy)) {
-                    int vorRoom = room(vor.room);
+                    int vorRoom = trueId(vor.room);
                     Vor& neighbour = grid[xx][yy];
                     if (neighbour.player == 255) {
                         neighbour.player = vor.player;
@@ -410,10 +419,10 @@ public:
                             neighbour.room = vorRoom;
                         }
                         addNode(xx, yy);
-                        Room& room = rooms[neighbour.room];
-                        room.size++;
+                        Room& r = room(neighbour.room);
+                        r.size++;
                     } else {
-                        int neighbourRoom = room(neighbour.room);
+                        int neighbourRoom = trueId(neighbour.room);
                         if (vorRoom != neighbourRoom) {
                             if (neighbour.player == vor.player) {
                                 if (state.isDoor(x, y, xOffset, yOffset)) {
@@ -427,7 +436,7 @@ public:
 
                                 if (neighbour.distance == vor.distance + 1) {
                                     // This is a shared boundary: remove it from the other player's territory
-                                    rooms[neighbourRoom].size--;
+                                    room(neighbourRoom).size--;
                                     // This cell is no man's land
                                     neighbour.player = 254;
                                 }
@@ -476,9 +485,9 @@ public:
         return rooms[player];
     }
 
-    inline Room& getNeighbour(const Room& room, int index) {
-        int roomId = room.neighbours[index];
-        return rooms[roomId];
+    inline Room& getNeighbour(const Room& r, int index) {
+        int roomId = r.neighbours[index];
+        return room(roomId);
     }
 };
 
@@ -732,7 +741,7 @@ void minimax(Scores& scores, Bounds& parentBounds, State& state, int turn, void*
 }
 
 void voronoiRecursive(Scores& scores, Bounds& bounds, State& state, int turn, void* sc, void* data) {
-    if (turn >= state.maxDepth || state.isTimeLimitReached()) {
+    if (turn >= state.getMaxDepth()) {
         calculateScores(scores, *((Voronoi*)data), state);
     } else {
         minimax(scores, bounds, state, turn, sc, data);
@@ -770,12 +779,6 @@ void run() {
         }
         cerr << state.maxDepth << " plies" << endl;
         cerr << state.nodesSearched << " nodes" << endl;
-
-        if (state.timeLimitEnabled) {
-            if (state.isTimeLimitReached()) {
-                state.maxDepth--;
-            }
-        }
 
         cout << scores.move << endl;
     }
