@@ -10,10 +10,10 @@ tron_tests.o : tron.cc
 
 profile: tron_prof
 	./tron_prof
-	gprof tron_prof > tron_prof.out
+	# gprof tron_prof > tron_prof.out
 
 tron_prof: tron_prof.cc tron.cc
-	g++ -O3 -pg -o $@ tron_prof.cc -lrt -DTRON_PROF
+	g++ -g -O3 -o $@ tron_prof.cc -lrt -DTRON_PROF
 
 clean:
 	-rm *.o *.a *_tests prof

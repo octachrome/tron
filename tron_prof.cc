@@ -1,23 +1,21 @@
 #include <algorithm>
+#include <fstream>
 #include "tron.cc"
 
-Scores timedSearch(State& s, bool pruningEnabled) {
+long timedSearch(State& s, bool pruningEnabled) {
     State state = s;
     state.pruningEnabled = pruningEnabled;
 
     Voronoi voronoi;
     Bounds bounds;
 
-    clock_t start = millis();
     Scores scores;
     minimax(scores, bounds, state, 0, (void*) voronoiRecursive, &voronoi);
-    clock_t elapsed = millis() - start;
-    cerr << state.nodesSearched << " in " << elapsed << "ms" << endl;
-    return scores;
+    return state.nodesSearched;
 }
 
 void randomlyPopulate(State& state) {
-    int count = 5 + rand() % 5;
+    int count = 10 + rand() % 5;
     for (int i = 0; i < count; i++) {
         int x = rand() % MAX_X;
         int y = rand() % MAX_Y;
@@ -35,19 +33,35 @@ void randomlyPopulate(State& state) {
 }
 
 int main() {
-    State state;
-    state.numPlayers = 2;
-    state.thisPlayer = 0;
-    state.maxDepth = 13;
-    state.pruningEnabled = false;
-    state.timeLimitEnabled = false;
+    ofstream os("timing.log");
+    os << "Nodes,Time" << endl;
 
-    srand(time(0));
-    randomlyPopulate(state);
+    for (int j = 0; j < 10; j++) {
+        srand(199);
+        // srand(time(0));
 
-    state.occupy(26, 18, 0);
-    state.occupy(16, 1, 1);
-    state.print();
+        State state;
+        state.numPlayers = 2;
+        state.thisPlayer = 0;
+        state.maxDepth = 8;
+        state.pruningEnabled = false;
+        state.timeLimitEnabled = false;
 
-    timedSearch(state, true);
+        randomlyPopulate(state);
+        state.occupy(26, 18, 0);
+        state.occupy(16, 1, 1);
+
+        long nodes = 0;
+        clock_t start = millis();
+
+        for (int i = 0; i < 1000; i++) {
+            nodes += timedSearch(state, true);
+        }
+
+        clock_t elapsed = millis() - start;
+        os << nodes << "," << elapsed << endl;
+        cerr << 100.0 * nodes / elapsed << " nodes per 100ms" << endl;
+    }
+
+    os.close();
 }
