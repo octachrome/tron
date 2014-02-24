@@ -263,7 +263,6 @@ private:
     int regions[PLAYERS];
     Vor grid[WIDTH][HEIGHT];
     Coord openNodes[10000];
-    int nodeCount;
     Room rooms[10000];
     int roomCount;
     short equivalences[600];
@@ -271,14 +270,13 @@ private:
     void clear() {
         memset(grid, 255, sizeof(grid));
         memset(equivalences, -1, sizeof(equivalences));
-        nodeCount = 0;
         roomCount = 0;
     }
 
-    inline void addNode(int x, int y) {
-        openNodes[nodeCount].x = x;
-        openNodes[nodeCount].y = y;
-        nodeCount++;
+    #define addNode(xx, yy) {            \
+        openNodes[nodeCount].x = xx;     \
+        openNodes[nodeCount].y = yy;     \
+        nodeCount++;                     \
     }
 
     inline int addRoom() {
@@ -382,16 +380,21 @@ private:
 public:
     void calculate(const State& state) {
         clear();
+        int nodeCount = 0;
 
-        for (int i = 0; i < state.numPlayers; i++) {
+        int numPlayers = state.numPlayers;
+        for (int i = 0; i < numPlayers; i++) {
             // Ensure that player id = room id, no matter how many players are alive
             int room = addRoom();
             if (state.isAlive(i)) {
                 const Player& player = state.players[i];
-                grid[player.x][player.y].player = i;
-                grid[player.x][player.y].distance = 0;
-                grid[player.x][player.y].room = room;
-                addNode(player.x, player.y);
+                int px = player.x;
+                int py = player.y;
+                Vor& v = grid[px][py];
+                v.player = i;
+                v.distance = 0;
+                v.room = room;
+                addNode(px, py);
             }
             regions[i] = i;
         }
@@ -412,30 +415,32 @@ public:
                 if (!state.occupied(xx, yy)) {
                     int vorRoom = trueId(vor.room);
                     Vor& neighbour = grid[xx][yy];
-                    if (neighbour.player == 255) {
+                    int neighbourPlayer = neighbour.player;
+                    if (neighbourPlayer == 255) {
                         neighbour.player = vor.player;
                         neighbour.distance = vor.distance + 1;
+                        int neighbourRoom;
                         if (state.isDoor(x, y, xOffset, yOffset)) {
-                            neighbour.room = addRoom();
-                            makeNeighbours(vorRoom, neighbour.room);
+                            neighbourRoom = addRoom();
+                            makeNeighbours(vorRoom, neighbourRoom);
                         } else {
-                            neighbour.room = vorRoom;
+                            neighbourRoom = vorRoom;
                         }
                         addNode(xx, yy);
-                        Room& r = room(neighbour.room);
-                        r.size++;
+                        neighbour.room = neighbourRoom;
+                        rooms[neighbourRoom].size++;
                     } else {
                         int neighbourRoom = trueId(neighbour.room);
                         if (vorRoom != neighbourRoom) {
-                            if (neighbour.player == vor.player) {
+                            if (neighbourPlayer == vor.player) {
                                 if (state.isDoor(x, y, xOffset, yOffset)) {
                                     makeNeighbours(vorRoom, neighbourRoom);
                                 } else {
                                     combineRooms(vorRoom, neighbourRoom);
                                 }
-                            } else if (neighbour.player != 254) {
+                            } else if (neighbourPlayer != 254) {
                                 // Join the regions
-                                regions[neighbour.player] = regions[vor.player];
+                                regions[neighbourPlayer] = regions[vor.player];
 
                                 if (neighbour.distance == vor.distance + 1) {
                                     // This is a shared boundary: remove it from the other player's territory
@@ -450,7 +455,7 @@ public:
             }
         }
 
-        for (int i = 0; i < state.numPlayers; i++) {
+        for (int i = 0; i < numPlayers; i++) {
             if (state.isAlive(i)) {
                 Room& room = startingRoom(i);
                 sizes[i] = calculateRegionSize(room);
