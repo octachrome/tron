@@ -32,11 +32,13 @@ void randomlyPopulate(State& state) {
     }
 }
 
-int main() {
+int main(int argc, char* argv[]) {
     ofstream os("timing.log");
-    os << "Nodes,Time" << endl;
+    os << "Nodes,Time,NodesPer100ms" << endl;
 
-    for (int j = 0; j < 10; j++) {
+    int loops =  argc > 1 ? 1 : 10;
+
+    for (int j = 0; j < loops; j++) {
         srand(199);
         // srand(time(0));
 
@@ -59,8 +61,8 @@ int main() {
         }
 
         clock_t elapsed = millis() - start;
-        os << nodes << "," << elapsed << endl;
-        cerr << 100.0 * nodes / elapsed << " nodes per 100ms" << endl;
+        os << nodes << "," << elapsed << "," << 100.0 * nodes / elapsed << endl;
+        cerr << "Pass " << j << " complete" << endl;
     }
 
     os.close();
