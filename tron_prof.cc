@@ -36,9 +36,14 @@ int main(int argc, char* argv[]) {
     ofstream os("timing.log");
     os << "Nodes,Time,NodesPer100ms" << endl;
 
-    int loops =  argc > 1 ? 1 : 10;
+    int passes = 10;
+    int loops = 1000;
+    if (argc > 1) {
+        passes = 1;
+        loops = 50;
+    }
 
-    for (int j = 0; j < loops; j++) {
+    for (int j = 0; j < passes; j++) {
         srand(199);
         // srand(time(0));
 
@@ -56,7 +61,7 @@ int main(int argc, char* argv[]) {
         long nodes = 0;
         clock_t start = millis();
 
-        for (int i = 0; i < 1000; i++) {
+        for (int i = 0; i < loops; i++) {
             nodes += timedSearch(state, true);
         }
 
