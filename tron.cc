@@ -49,7 +49,7 @@ public:
 
 class State {
 private:
-    unsigned char grid[WIDTH][HEIGHT];
+    unsigned char grid[WIDTH+2][HEIGHT+2];
 
 public:
     int numPlayers;
@@ -69,7 +69,13 @@ public:
     int deadList[PLAYERS];
 
     State() {
-        memset(grid, 0, WIDTH * HEIGHT * sizeof(char));
+        memset(grid, 0, (WIDTH + 2) * (HEIGHT + 2) * sizeof(char));
+        for (int x = 0; x < WIDTH + 2; x++) {
+            grid[x][0] = grid[x][HEIGHT + 1] = 255;
+        }
+        for (int y = 0; y < HEIGHT + 2; y++) {
+            grid[0][y] = grid[WIDTH + 1][y] = 255;
+        }
         maxDepth = 8;
         pruneMargin = 0;
         pruningEnabled = false;
@@ -123,25 +129,22 @@ public:
     }
 
     inline bool occupied(int x, int y) const {
-        if (x < 0 || y < 0 || x > MAX_X || y > MAX_Y) {
-            return true;
-        }
-        return grid[x][y] & alive;
+        return grid[x + 1][y + 1] & alive;
     }
 
     inline void occupy(int x, int y, int player) {
         players[player].x = x;
         players[player].y = y;
 
-        grid[x][y] |= (1 << player);
+        grid[x + 1][y + 1] |= (1 << player);
     }
 
     inline void unoccupy(int x, int y, int player) {
-        grid[x][y] &= ~(1 << player);
+        grid[x + 1][y + 1] &= ~(1 << player);
     }
 
     inline void clear(int x, int y) {
-        grid[x][y] = 0;
+        grid[x + 1][y + 1] = 0;
     }
 
     inline void kill(int player) {
@@ -218,7 +221,7 @@ public:
                 if (player >= 0) {
                     cerr << char('A' + player);
                 } else {
-                    unsigned char b = grid[x][y];
+                    unsigned char b = grid[x + 1][y + 1];
                     if (b == 0) {
                         cerr << ' ';
                     } else {
