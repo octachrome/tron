@@ -93,7 +93,7 @@ public:
 
     inline int getMaxDepth() {
         if (isTimeLimitReached()) {
-            return 4;
+            return 1;
         } else {
             return maxDepth;
         }
