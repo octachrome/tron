@@ -9,7 +9,7 @@
 #define MAX_X  (WIDTH - 1)
 #define MAX_Y  (HEIGHT - 1)
 #define PLAYERS 4
-#define TIME_LIMIT 95
+#define TIME_LIMIT 80
 #define MAX_NEIGHBOURS 32
 
 using namespace std;
@@ -93,7 +93,7 @@ public:
 
     inline int getMaxDepth() {
         if (isTimeLimitReached()) {
-            return 1;
+            return 4;
         } else {
             return maxDepth;
         }
@@ -194,7 +194,7 @@ public:
             is >> headX;
             is >> headY;
 
-            if (players[i].x == headX && players[i].y == headY) {
+            if (headX < 0 || (players[i].x == headX && players[i].y == headY)) {
                 // Player is already dead
                 kill(i);
             } else {
@@ -289,10 +289,13 @@ private:
     }
 
     inline int trueId(int id) {
-        while (equivalences[id] >= 0) {
-            id = equivalences[id];
-        }
-        return id;
+        do {
+            register int equiv = equivalences[id];
+            if (equiv == -1) {
+                return id;
+            }
+            id = equiv;
+        } while (true);
     }
 
     inline Room& room(int id) {
