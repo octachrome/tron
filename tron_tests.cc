@@ -892,6 +892,46 @@ TEST(Minimax, BadDecision4) {
     ASSERT_EQ(scores.move, DOWN) << "Expected p2 to kill";
 }
 
+TEST(Minimax, BadDecision5) {
+    State state;
+    state.numPlayers = 4;
+    state.thisPlayer = 2;
+    state.maxDepth = 5;
+    state.timeLimitEnabled = false;
+    state.pruningEnabled = false;
+
+    // Game #2305658: should have chosen larger room
+    readBoard(state,
+        "....*222222222222222222222222*\n"
+        "....*2...*....*....*....*.222*\n"
+        "222.*2...*....*....*....*22.22\n"
+        "222.*2..000000000000000002...2\n"
+        "222.*2..0*....*....*....22...2\n"
+        "222222..0*....*....*....2...22\n"
+        "2222*...0*....*....*....2...2*\n"
+        "2222*...0*....*....*....2...2*\n"
+        "2222*...0*...333333333332...2*\n"
+        "222.*.00000...*....*...32...2*\n"
+        "222.0000.*00000..00000A32...2*\n"
+        "222.00000000000..00000.32...2*\n"
+        "22..00000000000000.000.32...2*\n"
+        ".2.0000000000000000000.32...2*\n"
+        ".2.0000000000000000*00.322222*\n"
+        ".C..*....*....*....*...333322*\n"
+        "3D..*....*....*....*....*.322*\n"
+        "33333333333333333333333333322*\n"
+        "333333333333333333333333333333\n"
+        "333333333333333333333333333333\n");
+
+    state.kill(1);
+
+    Voronoi voronoi;
+    Bounds bounds;
+
+    Scores scores = minimax(bounds, state, 0, (void*) voronoiRecursive, &voronoi);
+    ASSERT_EQ(scores.move, RIGHT) << "Expected p2 to choose the larger room";
+}
+
 TEST(Minimax, KillingSamePlayerRepeatedlyShouldDoNothing) {
     State state;
     state.numPlayers = 3;
@@ -977,6 +1017,46 @@ TEST(Scoring, PlayerWhoGainsLargestRegionIsEveryonesOpponent) {
     // ASSERT_FALSE(scores.areOpponents(1, 2)) << "Players 1 and 2 are not opponents";
     // ASSERT_FALSE(scores.areOpponents(2, 1)) << "Players 2 and 1 are not opponents";
     // ASSERT_TRUE(scores.areOpponents(0, 1)) << "Players 0 and 1 are opponents";
+}
+
+TEST(Scoring, Ranking) {
+    State state;
+    state.numPlayers = 4;
+    state.thisPlayer = 0;
+
+    readBoard(state,
+        "..A0*..1B1..2C*..0.*.3D3*....*\n"
+        "...0*..1.1..2.*..0.*.333*....*\n"
+        "0000*..111..2.*..0.*....*....*\n"
+        "....*....*..222220.*....*....*\n");
+
+    Voronoi voronoi;
+    Scores scores = calculateScores(voronoi, state);
+
+    ASSERT_EQ(2, scores.ranks[0]);
+    ASSERT_EQ(1, scores.ranks[1]);
+    ASSERT_EQ(3, scores.ranks[2]);
+    ASSERT_EQ(0, scores.ranks[3]);
+}
+
+TEST(Scoring, RankingWithTie) {
+    State state;
+    state.numPlayers = 4;
+    state.thisPlayer = 0;
+
+    readBoard(state,
+        "..A0*..1B1..2C*.2..*.3D3*....*\n"
+        "...0*..1.1..2.*.2..*.333*....*\n"
+        "0000*..111..22222..*....*....*\n"
+        "....*....*....*....*....*....*\n");
+
+    Voronoi voronoi;
+    Scores scores = calculateScores(voronoi, state);
+
+    ASSERT_EQ(2, scores.ranks[0]);
+    ASSERT_EQ(1, scores.ranks[1]);
+    ASSERT_EQ(2, scores.ranks[2]);
+    ASSERT_EQ(0, scores.ranks[3]);
 }
 
 class GameSim {

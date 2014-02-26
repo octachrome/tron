@@ -505,6 +505,7 @@ public:
 class Scores {
 public:
     int scores[PLAYERS];
+    int ranks[PLAYERS];
     int regions[PLAYERS];
     unsigned int losers;
     const char* move;
@@ -629,24 +630,12 @@ void calculateScores(Scores& scores, Voronoi& voronoi, State& state) {
         }
     }
 
-    // if more than one person is still alive, but one of them has clearly won, award a bonus to the winner
-    if (aliveCount >= 2) {
-        int bonus = -1;
-        for (int i = 0; i < state.numPlayers; i++) {
-            int region = voronoi.regionForPlayer(i);
-            if (occupants[region] == 1 && totalSize[i] == maxSize) {
-                // Bonus!
-                bonus = i;
-                break;
-            }
-        }
-        if (bonus >= 0) {
-            scores.scores[bonus] += 1000;
-            for (int i = 0; i < state.numPlayers; i++) {
-                if (i != bonus && !dead[i]) {
-                    scores.scores[i] -= 1000 / (aliveCount - 1);
-                    scores.setLoser(i);
-                }
+    // calculate ranks
+    for (int i = 0; i < state.numPlayers; i++) {
+        scores.ranks[i] = 0;
+        for (int j = 0; j < state.numPlayers; j++) {
+            if (i != j && scores.scores[j] < scores.scores[i]) {
+                scores.ranks[i]++;
             }
         }
     }
@@ -666,7 +655,7 @@ inline bool checkBounds(Bounds& bounds, Scores& scores, State& state, int player
             && scores.regions[i] == region
             // Is this player's score connected to mine (positive correlation)?
             && !(scores.isLoser(i) && scores.isLoser(player))) {
-#ifdef TRON_TRACE
+#ifdef TRON_TRACEX
             cerr << "Score " << scores.scores[i] << " breaks bound " << bounds.bounds[i] << " for player " << i
                 << " from " << bounds.moves[i] << endl;
             scores.print();
@@ -696,6 +685,7 @@ void minimax(Scores& scores, Bounds& parentBounds, State& state, int turn, void*
 
     Scores bestScores;
     bestScores.scores[player] = INT_MIN;
+    bestScores.ranks[player] = 0;
 
     int origX = state.players[player].x;
     int origY = state.players[player].y;
@@ -714,7 +704,7 @@ void minimax(Scores& scores, Bounds& parentBounds, State& state, int turn, void*
             state.occupy(origX, origY, player); // restore player position
             scores.move = dirs[i];
             if (checkBounds(bounds, scores, state, player)) {
-#ifdef TRON_TRACE
+#ifdef TRON_TRACEX
                 cerr << "Pruned at " << scores.moves << endl;
                 cerr << "          ";
                 for (int j = 0; j < turn; j++) {
@@ -724,7 +714,9 @@ void minimax(Scores& scores, Bounds& parentBounds, State& state, int turn, void*
 #endif
                 return;
             }
-            if (scores.scores[player] > bestScores.scores[player]) {
+
+            if (scores.ranks[player] > bestScores.ranks[player] ||
+                (scores.ranks[player] == bestScores.ranks[player] && scores.scores[player] > bestScores.scores[player])) {
                 bestScores = scores;
                 if (state.pruningEnabled) {
                     bounds.bounds[player] = scores.scores[player];
