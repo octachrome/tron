@@ -445,7 +445,7 @@ public:
                                 }
                             } else {
                                 // Join the regions (buggy, because it might assign p0.region = 1, then later p1.region = 0)
-                                regions[neighbourPlayer] = regions[vor.player];
+                                // regions[neighbourPlayer] = regions[vor.player];
                             }
                         }
                     }
@@ -560,50 +560,15 @@ public:
     }
 };
 
-class Size {
-public:
-    int player;
-    int size;
-
-    Size(int p_player, int p_size) {
-        player = p_player;
-        size = p_size;
-    }
-};
-
 void calculateScores(Scores& scores, Voronoi& voronoi, State& state, int turn) {
-    int occupants[PLAYERS];
-    int totalSize[PLAYERS];
-    int maxSize = -1;
-
     voronoi.calculate(state, turn);
 
-    scores.clearFlags();
+    // for (int i = 0; i < state.numPlayers; i++) {
+    //     scores.regions[i] = voronoi.regionForPlayer(i);
+    // }
 
-    for (int i = 0; i < state.numPlayers; i++) {
-        scores.regions[i] = voronoi.regionForPlayer(i);
-    }
-
-    // for each region
-    for (int i = 0; i < state.numPlayers; i++) {
-        occupants[i] = 0;
-        totalSize[i] = 0;
-    }
     for (int i = 0; i < state.numPlayers; i++) {
         scores.scores[i] = voronoi.playerRegionSize(i);
-
-        int region = voronoi.regionForPlayer(i);
-        occupants[region]++;
-
-        if (state.isAlive(i)) {
-            totalSize[region] += voronoi.playerRegionSize(i);
-        } else {
-            totalSize[region] = -1;
-        }
-
-        if (totalSize[region] > maxSize) {
-            maxSize = totalSize[region];
-        }
     }
 
     // penalise dead people. revive everyone and go through the deaths in order.
