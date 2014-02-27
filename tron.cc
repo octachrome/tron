@@ -12,6 +12,10 @@
 #define TIME_LIMIT 80
 #define MAX_NEIGHBOURS 32
 
+//#define WORST_CASE_TESTING
+#define NO_MANS_LAND
+#define SHARED_ROOM_PENALTY 9 / 10
+
 using namespace std;
 
 const char* RIGHT = "RIGHT";
@@ -254,6 +258,7 @@ public:
     short size;
     short neighbourCount;
     short neighbours[MAX_NEIGHBOURS];
+    bool shared;
     bool visited;
 };
 
@@ -284,6 +289,7 @@ private:
         Room& room = rooms[id];
         room.size = 0;
         room.neighbourCount = 0;
+        room.shared = false;
         room.visited = false;
         return id;
     }
@@ -329,16 +335,20 @@ private:
             combinedId = id2;
             oldId = id1;
         }
+#ifdef TRON_TRACE
         if (trueId(oldId) == trueId(combinedId)) {
             cerr << "Room " << oldId << " already combined with " << combinedId << endl;
             return;
         }
+#endif
 
         Room& combined = room(combinedId);
         Room& old = room(oldId);
 
         combined.size += old.size;
         old.size = -1;
+
+        combined.shared = combined.shared || old.shared;
 
         // Delete any neighbour relationship between new room and old, by swapping for the last neighbour in the list
         for (int i = 0; i < combined.neighbourCount; i++) {
@@ -377,7 +387,13 @@ private:
             }
         }
         room.visited = false;
-        return room.size + maxNeighbourSize;
+        int size = room.size;
+#ifdef SHARED_ROOM_PENALTY
+        if (room.shared) {
+            size = size * SHARED_ROOM_PENALTY;
+        }
+#endif
+        return size + maxNeighbourSize;
     }
 
 public:
@@ -433,6 +449,7 @@ public:
                         }
                         addNode(xx, yy);
                         neighbour.room = neighbourRoom;
+                        // neighbourRoom is definitely not dead
                         rooms[neighbourRoom].size++;
                     } else {
                         int neighbourRoom = trueId(neighbour.room);
@@ -446,6 +463,24 @@ public:
                             } else {
                                 // Join the regions (buggy, because it might assign p0.region = 1, then later p1.region = 0)
                                 // regions[neighbourPlayer] = regions[vor.player];
+#ifdef NO_MANS_LAND
+                                if (neighbourPlayer != 254) {
+                                    // Join the regions
+                                    regions[neighbourPlayer] = regions[vor.player];
+
+                                    if (neighbour.distance == vor.distance + 1) {
+                                        // This is a shared boundary: remove it from the other player's territory
+                                        // neighbourRoom is definitely not dead
+                                        rooms[neighbourRoom].size--;
+                                        // This cell is no man's land
+                                        neighbour.player = 254;
+                                    }
+                                }
+#endif
+                                // Penalise both rooms
+                                // neighbourRoom and vorRoom are definitely not dead
+                                rooms[neighbourRoom].shared = true;
+                                rooms[vorRoom].shared = true;
                             }
                         }
                     }
@@ -698,7 +733,9 @@ void minimax(Scores& scores, Bounds& parentBounds, State& state, int turn, void*
             scores.print();
 #endif
             if (improvesTheirRank(scores, bestScores, player)
+#ifdef WORST_CASE_TESTING
                     || worsensOurRank(scores, bestScores, player, state.thisPlayer)
+#endif
                     || improvesTheirScore(scores, bestScores, player)) {
                 bestScores = scores;
                 if (state.pruningEnabled) {
