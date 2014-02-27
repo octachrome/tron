@@ -941,6 +941,44 @@ TEST(Minimax, BadDecision6) {
     ASSERT_EQ(LEFT, scores.move) << "Expected p0 to choose the larger region";
 }
 
+TEST(Minimax, DISABLED_BadDecision7) {
+    State state;
+    state.thisPlayer = 3;
+    state.numPlayers = 4;
+    state.maxDepth = 5;
+    state.pruningEnabled = false;
+    state.timeLimitEnabled = false;
+
+    // Game 2347452: should choose larger region (we come last anyway, so not important)
+    readBoard(state,
+        "22222222.*....*....*....*...11\n"
+        "2222*..2.*....*....*....*...11\n"
+        "3332*..2.*....*....*....*...11\n"
+        "3.32*..2.*....*....*....*...11\n"
+        "3.32*..2.*....*....*....*...11\n"
+        "3.32*..2.000..*....*....111111\n"
+        "3.32*..2.0.0..*....*....1...11\n"
+        "3.32*..2.0.00.*....*.1111...1B\n"
+        "3.32*..2.0..0000000011..*...1*\n"
+        "333222.2.0....*...00111111111*\n"
+        "333333.2.0....*...0*....*....*\n"
+        ".33.*322.0....*...0*....*....*\n"
+        "....*322.0....*...0*....*....*\n"
+        "....*33C.0....*...0*....*....*\n"
+        "....*.3..0....*...0*....*....*\n"
+        "....*.3..0....*...0*....*....*\n"
+        "....*.3..0....*...0*....*....*\n"
+        "....*.3..0....*...0*....*....*\n"
+        "....*.3D.A....*....*....*....*\n"
+        "....*....*....*....*....*....*\n");
+
+    Voronoi voronoi;
+    Bounds bounds;
+    Scores scores = minimax(bounds, state, 0, (void*) voronoiRecursive, &voronoi);
+    scores.print();
+    ASSERT_NE(UP, scores.move) << "Expected p3 to choose a path to the larger region";
+}
+
 TEST(Minimax, KillingSamePlayerRepeatedlyShouldDoNothing) {
     State state;
     state.numPlayers = 3;

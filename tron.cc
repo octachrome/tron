@@ -626,6 +626,19 @@ inline bool checkBounds(Bounds& bounds, Scores& scores, State& state, int player
     return false;
 }
 
+// The given score will be chosen over the best score so far if it reduces *our* rank - this is an "avoid worst case" strategy
+inline bool worsensOurRank(Scores& scores, Scores& bestScores, int player, int thisPlayer) {
+    if (player == thisPlayer) {
+        return false;
+    }
+    return scores.ranks[thisPlayer] < bestScores.ranks[thisPlayer];
+}
+
+// The given score will be chosen over the best score so far if it improves the player's score (preserving rank)
+inline bool improvesTheirScore(Scores& scores, Scores& bestScores, int player) {
+    return scores.ranks[player] == bestScores.ranks[player] && scores.scores[player] > bestScores.scores[player];
+}
+
 void minimax(Scores& scores, Bounds& parentBounds, State& state, int turn, void* sc, void* data) {
     state.nodesSearched++;
     Bounds bounds = parentBounds;
@@ -674,9 +687,14 @@ void minimax(Scores& scores, Bounds& parentBounds, State& state, int turn, void*
 #endif
                 return;
             }
-
-            if (scores.ranks[player] > bestScores.ranks[player] ||
-                (scores.ranks[player] == bestScores.ranks[player] && scores.scores[player] > bestScores.scores[player])) {
+#ifdef TRON_TRACE
+            for (int k = 0; k < turn; k++) cerr << "  ";
+            cerr << "player " << player << ": ";
+            scores.print();
+#endif
+            if (scores.ranks[player] > bestScores.ranks[player]
+                    || worsensOurRank(scores, bestScores, player, state.thisPlayer)
+                    || improvesTheirScore(scores, bestScores, player)) {
                 bestScores = scores;
                 if (state.pruningEnabled) {
                     bounds.bounds[player] = scores.scores[player];
@@ -700,6 +718,11 @@ void minimax(Scores& scores, Bounds& parentBounds, State& state, int turn, void*
         scores.move = GULP;
     } else {
         scores = bestScores;
+#ifdef TRON_TRACE
+        for (int k = 0; k < turn; k++) cerr << "  ";
+        cerr << "player " << player << " chose ";
+        scores.print();
+#endif
     }
 }
 
