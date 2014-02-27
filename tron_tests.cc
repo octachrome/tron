@@ -58,12 +58,16 @@ Scores scoreCalculator_MaximiseScore(Bounds& bounds, State& state, int turn, voi
     Scores scores;
     scores.scores[1] = 1;
     if (state.players[0].x == 11) {
+        scores.ranks[0] = 0;
         scores.scores[0] = 3;
     } else if (state.players[0].x == 9) {
+        scores.ranks[0] = 0;
         scores.scores[0] = 4;
     } else if (state.players[0].y == 11) {
+        scores.ranks[0] = 0;
         scores.scores[0] = 5;
     } else if (state.players[0].y == 9) {
+        scores.ranks[0] = 0;
         scores.scores[0] = 2;
     }
     return scores;
@@ -80,6 +84,38 @@ TEST(Scoring, MaximiseScore) {
 
     Scores scores = minimax(bounds, state, 0, (void*) scoreCalculator_MaximiseScore, 0);
     ASSERT_EQ(DOWN, scores.move);
+}
+
+Scores scoreCalculator_MaximiseRank(Bounds& bounds, State& state, int turn, void* dummy, void* data) {
+    Scores scores;
+    scores.scores[1] = 1;
+    if (state.players[0].x == 11) {
+        scores.ranks[0] = 0;
+        scores.scores[0] = 3;
+    } else if (state.players[0].x == 9) {
+        scores.ranks[0] = 0;
+        scores.scores[0] = 4;
+    } else if (state.players[0].y == 11) {
+        scores.ranks[0] = 0;
+        scores.scores[0] = 5;
+    } else if (state.players[0].y == 9) {
+        scores.ranks[0] = 1;
+        scores.scores[0] = 2;
+    }
+    return scores;
+}
+
+TEST(Scoring, MaximiseRank) {
+    State state;
+    state.numPlayers = 2;
+    state.thisPlayer = 0;
+    state.players[0].x = 10;
+    state.players[0].y = 10;
+
+    Bounds bounds;
+
+    Scores scores = minimax(bounds, state, 0, (void*) scoreCalculator_MaximiseRank, 0);
+    ASSERT_EQ(UP, scores.move);
 }
 
 void simulateMove(State& state, int player, const char* move) {
@@ -106,7 +142,7 @@ TEST(Voronoi, EmptyBoardEqualRegions) {
 
     ASSERT_EQ(WIDTH * HEIGHT / 2 - 1, voronoi.playerRegionSize(0));
     ASSERT_EQ(WIDTH * HEIGHT / 2 - 1, voronoi.playerRegionSize(1));
-    ASSERT_TRUE(voronoi.regionForPlayer(0) == voronoi.regionForPlayer(1));
+    // ASSERT_TRUE(voronoi.regionForPlayer(0) == voronoi.regionForPlayer(1));
 }
 
 TEST(Voronoi, ShouldFindTwoRegionsWhenDividedHorizontally) {
@@ -168,79 +204,10 @@ TEST(Scoring, ConnectedRegionsScoreOnVoronoi) {
 
     Voronoi voronoi;
 
-    Scores scores = calculateScores(voronoi, state);
+    Scores scores = calculateScores(voronoi, state, 0);
 
-    ASSERT_EQ(306, scores.scores[0]);
+    ASSERT_EQ(325, scores.scores[0]);
     ASSERT_EQ(243, scores.scores[1]);
-}
-
-TEST(Scoring, DisconnectedRegionsScoreGetBonus) {
-    State state;
-    state.numPlayers = 2;
-
-    readBoard(state,
-        "A...*....*....*....*....*....*\n"
-        "....*....*....*....*....*....*\n"
-        "....*....*....*....*....*....*\n"
-        "....*....*....*....*....*....*\n"
-        "....*....*....*....*....*....*\n"
-        "....*....*....*....*....*....*\n"
-        "....*....*....*....*....*....*\n"
-        "....*....*....*....*....*....*\n"
-        "....*....*....*....*....*....*\n"
-        "....*....*....*....*....*....*\n"
-        "111111111111111111111111111111\n"
-        "....*....*....*....*....*....*\n"
-        "....*....*....*....*....*....*\n"
-        "....*....*....*....*....*....*\n"
-        "....*....*....*....*....*....*\n"
-        "....*....*....*....*....*....*\n"
-        "....*....*....*....*....*....*\n"
-        "....*....*....*....*....*....*\n"
-        "....*....*....*....*....*....*\n"
-        "....*....*....*....*....*....B\n");
-
-    Voronoi voronoi;
-
-    Scores scores = calculateScores(voronoi, state);
-
-    ASSERT_EQ(299 + 1000, scores.scores[0]);
-    ASSERT_EQ(269 - 1000, scores.scores[1]);
-}
-
-TEST(Scoring, ThreeWayBonus) {
-    State state;
-    state.numPlayers = 3;
-
-    readBoard(state,
-        "B...*....*....*....*1...*....A\n"
-        "....*....*....*....*1...*....*\n"
-        "....*....*....*....*1...*....*\n"
-        "....*....*....*....*1...*....*\n"
-        "....*....*....*....*1...*....*\n"
-        "....*....*....*....*1...*....*\n"
-        "....*....*....*....*1...*....*\n"
-        "....*....*....*....*1...*....*\n"
-        "....*....*....*....*1...*....*\n"
-        "....*....*....*....*1...*....*\n"
-        "111111111111111111111111111111\n"
-        "....*....*....*....*....*....*\n"
-        "....*....*....*....*....*....*\n"
-        "....*....*....*....*....*....*\n"
-        "....*....*....*....*....*....*\n"
-        "....*....*....*....*....*....*\n"
-        "....*....*....*....*....*....*\n"
-        "....*....*....*....*....*....*\n"
-        "....*....*....*....*....*....*\n"
-        "....*....*....*....*....*....C\n");
-
-    Voronoi voronoi;
-
-    Scores scores = calculateScores(voronoi, state);
-
-    ASSERT_EQ(89 - 500, scores.scores[0]);
-    ASSERT_EQ(199 - 500, scores.scores[1]);
-    ASSERT_EQ(269 + 1000, scores.scores[2]);
 }
 
 TEST(Scoring, CutOffOnAllSides) {
@@ -257,8 +224,8 @@ TEST(Scoring, CutOffOnAllSides) {
 
     Scores scores = calculateScores(voronoi, state);
 
-    ASSERT_EQ(-1000, scores.scores[0]);
-    ASSERT_EQ(WIDTH * HEIGHT - 10 + 1000, scores.scores[1]);
+    ASSERT_EQ(0, scores.scores[0]);
+    ASSERT_EQ(WIDTH * HEIGHT - 10, scores.scores[1]);
 }
 
 TEST(Scoring, Dead) {
@@ -312,7 +279,7 @@ Scores mockScoreCalculator(Bounds& bounds, State& state, int turn, void* dummy, 
     return mock->call();
 }
 
-TEST(Bounding, ShouldPruneWhenBoundExceededByFirstChild) {
+TEST(Bounding, DISABLED_ShouldPruneWhenBoundExceededByFirstChild) {
     State state;
     state.numPlayers = 2;
     state.thisPlayer = 0;
@@ -593,7 +560,7 @@ TEST(Minimax, BothPlayersDieButTheSecondShouldScore) {
     State state;
     state.numPlayers = 2;
     state.thisPlayer = 0;
-    state.maxDepth = 1;
+    state.maxDepth = 2;
     state.timeLimitEnabled = false;
 
     readBoard(state,
@@ -615,7 +582,7 @@ TEST(Minimax, BothPlayersDieInThreeMovesButTheSecondShouldScore) {
     State state;
     state.numPlayers = 2;
     state.thisPlayer = 0;
-    state.maxDepth = 1;
+    state.maxDepth = 4;
     state.timeLimitEnabled = false;
 
     readBoard(state,
@@ -631,7 +598,7 @@ TEST(Minimax, BothPlayersDieInThreeMovesButTheSecondShouldScore) {
     Scores scores = minimax(bounds, state, 0, (void*) voronoiRecursive, &voronoi);
 
     ASSERT_EQ(-1000, scores.scores[0]) << "First player loses";
-    ASSERT_EQ(1002, scores.scores[1]) << "Second player wins";
+    ASSERT_EQ(1001, scores.scores[1]) << "Second player wins";
 }
 
 TEST(State, ReadTurnShouldDetectDeath) {
@@ -698,9 +665,13 @@ TEST(Minimax, ScoreFairlyWithOneDeathAndAClearWinner) {
 
     Scores scores = minimax(bounds, state, 0, (void*) voronoiRecursive, &voronoi);
 
-    ASSERT_EQ(-1000, scores.scores[0]) << "First player in third place";
-    ASSERT_EQ(-499, scores.scores[1]) << "Second player in second placce";
-    ASSERT_EQ(1502, scores.scores[2]) << "Third player in first place";
+    ASSERT_EQ(-1000, scores.scores[0]) << "First player has lowest score";
+    ASSERT_EQ(501, scores.scores[1]) << "Second player has middle score";
+    ASSERT_EQ(502, scores.scores[2]) << "Third player has high score";
+
+    ASSERT_EQ(0, scores.ranks[0]) << "First player in third place";
+    ASSERT_EQ(1, scores.ranks[1]) << "Second player in second place";
+    ASSERT_EQ(2, scores.ranks[2]) << "Third player in first place";
 }
 
 TEST(Minimax, BadDecision1) {
@@ -1152,7 +1123,7 @@ TEST(Pruning, DISABLED_PlaySelf) {
     // pruningOn.states[0].print();
 }
 
-TEST(Scoring, ShouldSetLosersWhenSingleOccupantOfLargestRegion) {
+TEST(Scoring, DISABLED_ShouldSetLosersWhenSingleOccupantOfLargestRegion) {
     State state;
     readBoard(state,
         "....*....*....*..A.*....*....*\n"
@@ -1173,7 +1144,7 @@ TEST(Scoring, ShouldSetLosersWhenSingleOccupantOfLargestRegion) {
     ASSERT_FALSE(scores.isLoser(2)) << "Expected player 2 not to lose";
 }
 
-TEST(Scoring, ShouldNotSetLosersWhenNoSingleOccupantOfLargestRegion) {
+TEST(Scoring, DISABLED_ShouldNotSetLosersWhenNoSingleOccupantOfLargestRegion) {
     State state;
     readBoard(state,
         "....*....*....*..A.*....*....*\n"
@@ -1223,7 +1194,7 @@ TEST(Bounding, ShouldNotPruneWhenBothAreLosers) {
         "a better move for player 0 could cause both players to survive";
 }
 
-TEST(Scoring, ShouldCalculateRegionsForPlayers) {
+TEST(Scoring, DISABLED_ShouldCalculateRegionsForPlayers) {
     State state;
     readBoard(state,
         "....*....*....*..A.*....*....*\n"
@@ -1243,7 +1214,7 @@ TEST(Scoring, ShouldCalculateRegionsForPlayers) {
     ASSERT_EQ(scores.regions[1], scores.regions[2]) << "Expected players 1 and 2 to be in same region";
 }
 
-TEST(Bounding, ShouldPruneInThreeWayGameWhenBothBoundsExceeded) {
+TEST(Bounding, DISABLED_ShouldPruneInThreeWayGameWhenBothBoundsExceeded) {
     State state;
     state.numPlayers = 3;
     state.pruningEnabled = true;
@@ -1268,7 +1239,7 @@ TEST(Bounding, ShouldPruneInThreeWayGameWhenBothBoundsExceeded) {
     ASSERT_TRUE(checkBounds(bounds, scores, state, 0)) << "Expected player 1's and player 2's bound to cause pruning";
 }
 
-TEST(Bounding, ShouldNotPruneInThreeWayGameWhenOnlyOneBoundExceeded) {
+TEST(Bounding, DISABLED_ShouldNotPruneInThreeWayGameWhenOnlyOneBoundExceeded) {
     State state;
     state.numPlayers = 3;
     state.pruningEnabled = true;
@@ -1625,12 +1596,12 @@ TEST(Voronoi, SharedRoomWithAdjacentRooms) {
         ".........0000..\n");
 
     Voronoi voronoi;
-    voronoi.calculate(state);
+    voronoi.calculate(state, 0);
 
     const Room& room0 = voronoi.startingRoom(0);
 
     ASSERT_EQ(string(
-        "[0] room of size 17\n"
+        "[0] room of size 21\n"
         "[1]   room of size 11\n"
         "        backpointer\n"),
         roomString(voronoi, room0));
@@ -1661,14 +1632,14 @@ TEST(Voronoi, PlayerOnBoundary2) {
         ".........0000..\n");
 
     Voronoi voronoi;
-    voronoi.calculate(state);
+    voronoi.calculate(state, 0);
 
     const Room& room0 = voronoi.startingRoom(0);
 
     // A is in the lower of two adjoining rooms. If there were a room further down, he would
     // not be able to fill both this room and the upper room: he must choose one.
     ASSERT_EQ(string(
-        "[0] room of size 12\n"
+        "[0] room of size 15\n"
         "[1]   room of size 6\n"
         "        backpointer\n"
         "[2]     room of size 1\n"
