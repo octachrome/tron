@@ -12,9 +12,9 @@ Scores minimax(Bounds& parentBounds, State& state, int turn, void* sc, void* dat
     return scores;
 }
 
-Scores calculateScores(Voronoi& voronoi, State& state) {
+Scores calculateScores(Voronoi& voronoi, State& state, int turn = 0) {
     Scores scores;
-    calculateScores(scores, voronoi, state);
+    calculateScores(scores, voronoi, state, turn);
     return scores;
 }
 
@@ -1684,4 +1684,60 @@ TEST(Voronoi, PlayerOnBoundary2) {
     ASSERT_EQ(string(
         "[0] room of size 30\n"),
         roomString(voronoi, room1));
+}
+
+TEST(Voronoi, CompensateForNextTurn) {
+    State state;
+    state.numPlayers = 2;
+
+    readBoard(state,
+        "....*....0....*....*....*....*\n"
+        "A...*...B0....*....*....*....*\n"
+        "....*....0....*....*....*....*\n"
+        "0000000000....*....*....*....*\n"
+        "....*....*....*....*....*....*\n");
+
+    Voronoi voronoi;
+    voronoi.calculate(state, 0);
+
+    ASSERT_EQ(14, voronoi.startingRoom(0).size);
+    ASSERT_EQ(11, voronoi.startingRoom(1).size);
+
+    voronoi.calculate(state, 1);
+
+    ASSERT_EQ(11, voronoi.startingRoom(0).size);
+    ASSERT_EQ(14, voronoi.startingRoom(1).size);
+}
+
+TEST(Voronoi, CompensateForNextTurnThreeWay) {
+    State state;
+    state.numPlayers = 3;
+
+    readBoard(state,
+        "....*....0000000...*....*....*\n"
+        "....*..........0...*....*....*\n"
+        "A...*...B.....C0...*....*....*\n"
+        "....*..........0...*....*....*\n"
+        "....*....0000000...*....*....*\n"
+        "0000000000....*....*....*....*\n"
+        "....*....*....*....*....*....*\n");
+
+    Voronoi voronoi;
+    voronoi.calculate(state, 0);
+
+    ASSERT_EQ(24, voronoi.startingRoom(0).size);
+    ASSERT_EQ(28, voronoi.startingRoom(1).size);
+    ASSERT_EQ(8, voronoi.startingRoom(2).size);
+
+    voronoi.calculate(state, 1);
+
+    ASSERT_EQ(19, voronoi.startingRoom(0).size);
+    ASSERT_EQ(33, voronoi.startingRoom(1).size);
+    ASSERT_EQ(8, voronoi.startingRoom(2).size);
+
+    voronoi.calculate(state, 2);
+
+    ASSERT_EQ(24, voronoi.startingRoom(0).size);
+    ASSERT_EQ(25, voronoi.startingRoom(1).size);
+    ASSERT_EQ(11, voronoi.startingRoom(2).size);
 }

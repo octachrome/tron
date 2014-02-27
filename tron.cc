@@ -381,25 +381,27 @@ private:
     }
 
 public:
-    void calculate(const State& state) {
+    void calculate(const State& state, int turn = 0) {
         clear();
         int nodeCount = 0;
 
         int numPlayers = state.numPlayers;
         for (int i = 0; i < numPlayers; i++) {
             // Ensure that player id = room id, no matter how many players are alive
-            int room = addRoom();
-            if (state.isAlive(i)) {
-                const Player& player = state.players[i];
+            addRoom();
+            // Calculate in turn order, so the player with the first turn gets the edge on boundary territory
+            int playerNum = (i + turn) % state.numPlayers;
+            if (state.isAlive(playerNum)) {
+                const Player& player = state.players[playerNum];
                 int px = player.x;
                 int py = player.y;
                 Vor& v = grid[px][py];
-                v.player = i;
+                v.player = playerNum;
                 v.distance = 0;
-                v.room = room;
+                v.room = playerNum;
                 addNode(px, py);
             }
-            regions[i] = i;
+            regions[playerNum] = playerNum;
         }
 
         for (int i = 0; i < nodeCount; i++) {
@@ -441,16 +443,9 @@ public:
                                 } else {
                                     combineRooms(vorRoom, neighbourRoom);
                                 }
-                            } else if (neighbourPlayer != 254) {
+                            } else {
                                 // Join the regions
                                 regions[neighbourPlayer] = regions[vor.player];
-
-                                if (neighbour.distance == vor.distance + 1) {
-                                    // This is a shared boundary: remove it from the other player's territory
-                                    room(neighbourRoom).size--;
-                                    // This cell is no man's land
-                                    neighbour.player = 254;
-                                }
                             }
                         }
                     }
@@ -481,7 +476,7 @@ public:
         for (int y = 0; y <= MAX_Y; y++) {
             for (int x = 0; x <= MAX_X; x++) {
                 Vor vor = get(x, y);
-                cerr << setw(3) << (int(vor.room) > 255 ? 255 : int(vor.room));
+                cerr << setw(3) << (int(vor.player) > 255 ? 255 : int(vor.player));
             }
             cerr << endl;
         }
@@ -576,12 +571,12 @@ public:
     }
 };
 
-void calculateScores(Scores& scores, Voronoi& voronoi, State& state) {
+void calculateScores(Scores& scores, Voronoi& voronoi, State& state, int turn) {
     int occupants[PLAYERS];
     int totalSize[PLAYERS];
     int maxSize = -1;
 
-    voronoi.calculate(state);
+    voronoi.calculate(state, turn);
 
     scores.clearFlags();
 
@@ -745,7 +740,7 @@ void minimax(Scores& scores, Bounds& parentBounds, State& state, int turn, void*
 
 void voronoiRecursive(Scores& scores, Bounds& bounds, State& state, int turn, void* sc, void* data) {
     if (turn >= state.getMaxDepth()) {
-        calculateScores(scores, *((Voronoi*)data), state);
+        calculateScores(scores, *((Voronoi*)data), state, turn);
     } else {
         minimax(scores, bounds, state, turn, sc, data);
     }
