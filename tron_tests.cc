@@ -903,6 +903,44 @@ TEST(Minimax, BadDecision5) {
     ASSERT_EQ(scores.move, RIGHT) << "Expected p2 to choose the larger room";
 }
 
+TEST(Minimax, BadDecision6) {
+    State state;
+    state.thisPlayer = 0;
+    state.numPlayers = 2;
+    state.maxDepth = 8;
+    state.pruningEnabled = false;
+    state.timeLimitEnabled = false;
+
+    // Game 2347452: should choose larger region
+    readBoard(state,
+        "....*....*....*....*....*....*\n"
+        "....*....*....*....*....*....*\n"
+        "....*....*....*....*....*....*\n"
+        "....*....*....*....*....*....*\n"
+        "....*....*....*....*....*....*\n"
+        "....*....*....*....*....*....*\n"
+        "....*....*....*....*....*....*\n"
+        "....*....*....*....*....*....*\n"
+        "....*....*....*....*....*....*\n"
+        "....*....*....*....*....*....*\n"
+        "....*....*....*....*....*....*\n"
+        "....*....*....*....*....*....*\n"
+        "....*....*....*....*....*....*\n"
+        "....*....*....*....*....*....*\n"
+        "....*....*....*.1..*....*....*\n"
+        "....*....*....*.1..*....*....*\n"
+        "....*....*....*.B..*....*....*\n"
+        "....*....*....*.A..*....*....*\n"
+        "....*....*....*.0..*....*....*\n"
+        "....*....*....*.0..*....*....*\n");
+
+    Voronoi voronoi;
+    Bounds bounds;
+    Scores scores = minimax(bounds, state, 0, (void*) voronoiRecursive, &voronoi);
+
+    ASSERT_EQ(LEFT, scores.move) << "Expected p0 to choose the larger region";
+}
+
 TEST(Minimax, KillingSamePlayerRepeatedlyShouldDoNothing) {
     State state;
     state.numPlayers = 3;
