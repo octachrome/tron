@@ -444,7 +444,7 @@ public:
                                     combineRooms(vorRoom, neighbourRoom);
                                 }
                             } else {
-                                // Join the regions
+                                // Join the regions (buggy, because it might assign p0.region = 1, then later p1.region = 0)
                                 regions[neighbourPlayer] = regions[vor.player];
                             }
                         }
