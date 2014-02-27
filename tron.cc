@@ -639,6 +639,11 @@ inline bool improvesTheirScore(Scores& scores, Scores& bestScores, int player) {
     return scores.ranks[player] == bestScores.ranks[player] && scores.scores[player] > bestScores.scores[player];
 }
 
+// The given score will be chosen over the best score so far if it improves the player's rank
+inline bool improvesTheirRank(Scores& scores, Scores& bestScores, int player) {
+    return scores.ranks[player] > bestScores.ranks[player];
+}
+
 void minimax(Scores& scores, Bounds& parentBounds, State& state, int turn, void* sc, void* data) {
     state.nodesSearched++;
     Bounds bounds = parentBounds;
@@ -692,7 +697,7 @@ void minimax(Scores& scores, Bounds& parentBounds, State& state, int turn, void*
             cerr << "player " << player << ": ";
             scores.print();
 #endif
-            if (scores.ranks[player] > bestScores.ranks[player]
+            if (improvesTheirRank(scores, bestScores, player)
                     || worsensOurRank(scores, bestScores, player, state.thisPlayer)
                     || improvesTheirScore(scores, bestScores, player)) {
                 bestScores = scores;
