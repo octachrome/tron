@@ -2,16 +2,22 @@
 
 use strict;
 use IPC::Open2;
+use Data::Dumper;
 
-my $count = scalar @ARGV;
+my $bot1 = shift;
+my $bot2 = shift;
+my @coords = @ARGV;
+
+my @args = ($bot1, $bot2);
+my $count = scalar @args;
 die unless $count;
 
 my @bots;
 
-for my $bot (@ARGV) {
+for my $bot (@args) {
     my $pid = open2(my $out, my $in, $bot);
-    my $x = int(rand(30));
-    my $y = int(rand(20));
+    my $x = shift @coords; # int(rand(30));
+    my $y = shift @coords; # int(rand(20));
 
     push @bots, {
         bot => $bot,
