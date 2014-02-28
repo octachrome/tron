@@ -1808,8 +1808,8 @@ TEST(Scoring, DoorPenalty) {
     Voronoi voronoi;
     Scores scores = calculateScores(voronoi, state);
 
-    ASSERT_EQ(5, scores.scores[0]) << "Expected p0 to have no door penalty";
-    ASSERT_EQ(10 - 2, scores.scores[1]) << "Expected p1 to incur a single door penalty";
-    ASSERT_EQ(8 - 2, scores.scores[2]) << "Expected p2 to incur a single door penalty";
-    ASSERT_EQ(26 - 4, scores.scores[3]) << "Expected p3 to incur a double door penalty";
+    ASSERT_EQ(2 * 5, scores.scores[0]) << "Expected p0 to have no door penalty";
+    ASSERT_EQ(2 * 10 - 1, scores.scores[1]) << "Expected p1 to incur a single door penalty";
+    ASSERT_EQ(2 * 8 - 1, scores.scores[2]) << "Expected p2 to incur a single door penalty";
+    ASSERT_EQ(2 * 26 - 2, scores.scores[3]) << "Expected p3 to incur a double door penalty";
 }

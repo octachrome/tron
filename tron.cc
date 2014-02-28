@@ -14,10 +14,10 @@
 
 //#define WORST_CASE_TESTING
 #define NO_MANS_LAND
-//#define SHARED_ROOM_PENALTY 9 / 10
+#define SHARED_ROOM_PENALTY 9 / 10
 // We get this much extra space for each room which is available to us but which we don't choose to enter
 #define UNVISITED_ROOM_BONUS 1 / 20
-#define DOOR_PENALTY 2
+#define DOOR_PENALTY 1
 
 using namespace std;
 
@@ -395,7 +395,9 @@ private:
             if (!neighbour.visited) {
                 int size = calculateRegionSize(neighbour);
 #ifdef DOOR_PENALTY
-                if (size > DOOR_PENALTY && room.size != 1 && neighbour.size == 1) size -= DOOR_PENALTY;
+                if (size >= DOOR_PENALTY && room.size != 1 && neighbour.size == 1) {
+                    size -= DOOR_PENALTY;
+                }
 #endif
                 if (size > maxNeighbourSize) {
                     maxNeighbourSize = size;
@@ -407,7 +409,8 @@ private:
             }
         }
         room.visited = false;
-        int size = room.size;
+        // Double the room size, so we can apply 'half cell' bonuses/penalties
+        int size = room.size * 2;
 #ifdef SHARED_ROOM_PENALTY
         if (sharedNeighbour) {
             size = size * SHARED_ROOM_PENALTY;
