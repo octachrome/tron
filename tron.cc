@@ -16,8 +16,8 @@
 #define NO_MANS_LAND
 //#define SHARED_ROOM_PENALTY 9 / 10
 // We get this much extra space for each room which is available to us but which we don't choose to enter
-#define UNVISITED_ROOM_BONUS 1 / 10
-//#define DOOR_PENALTY 1
+#define UNVISITED_ROOM_BONUS 1 / 20
+#define DOOR_PENALTY 2
 
 using namespace std;
 
@@ -392,10 +392,10 @@ private:
         bool sharedNeighbour = false;
         for (int i = 0; i < room.neighbourCount; i++) {
             Room& neighbour = getNeighbour(room, i);
-            if (&neighbour != &room) {
+            if (!neighbour.visited) {
                 int size = calculateRegionSize(neighbour);
 #ifdef DOOR_PENALTY
-                if (size > DOOR_PENALTY) size -= DOOR_PENALTY;
+                if (size > DOOR_PENALTY && room.size != 1 && neighbour.size == 1) size -= DOOR_PENALTY;
 #endif
                 if (size > maxNeighbourSize) {
                     maxNeighbourSize = size;
@@ -534,7 +534,7 @@ public:
         for (int y = 0; y <= MAX_Y; y++) {
             for (int x = 0; x <= MAX_X; x++) {
                 Vor vor = get(x, y);
-                cerr << setw(3) << (int(vor.player) > 255 ? 255 : int(vor.player));
+                cerr << setw(3) << (int(vor.player) >= 255 ? 255 : int(vor.player));
             }
             cerr << endl;
         }

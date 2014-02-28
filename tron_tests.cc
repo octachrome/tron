@@ -1788,3 +1788,28 @@ TEST(Voronoi, CompensateForNextTurnThreeWay) {
     ASSERT_EQ(25, voronoi.startingRoom(1).size);
     ASSERT_EQ(11, voronoi.startingRoom(2).size);
 }
+
+TEST(Scoring, DoorPenalty) {
+    State state;
+    state.numPlayers = 4;
+    state.thisPlayer = 0;
+
+    readBoard(state,
+        "A..0*....1B...*.1..*....*.2.2C\n"
+        "...0*....1...1*.1..*....*.2.2*\n"
+        "0000*....11111111..*....*.2.2*\n"
+        "....*....*....*....*....*.2..*\n"
+        "3333333333333333...*....*.2222\n"
+        "D...*.33.*..3.*3...*....*....*\n"
+        "....*....*....*3...*....*....*\n"
+        "3333333333333333...*....*....*\n"
+        "....*....*....*....*....*....*\n");
+
+    Voronoi voronoi;
+    Scores scores = calculateScores(voronoi, state);
+
+    ASSERT_EQ(5, scores.scores[0]) << "Expected p0 to have no door penalty";
+    ASSERT_EQ(10 - 2, scores.scores[1]) << "Expected p1 to incur a single door penalty";
+    ASSERT_EQ(8 - 2, scores.scores[2]) << "Expected p2 to incur a single door penalty";
+    ASSERT_EQ(26 - 4, scores.scores[3]) << "Expected p3 to incur a double door penalty";
+}
