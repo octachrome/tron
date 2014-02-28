@@ -14,9 +14,11 @@
 
 //#define WORST_CASE_TESTING
 #define NO_MANS_LAND
+// Each room which has a neighbour shared with an enemy has its space reduced by this ratio
 #define SHARED_ROOM_PENALTY 9 / 10
 // We get this much extra space for each room which is available to us but which we don't choose to enter
 #define UNVISITED_ROOM_BONUS 1 / 20
+// Each door we pass through reduces our score by this much
 #define DOOR_PENALTY 1
 
 using namespace std;
