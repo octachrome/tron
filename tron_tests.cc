@@ -829,11 +829,11 @@ TEST(Minimax, BadDecision4) {
     State state;
     state.numPlayers = 4;
     state.thisPlayer = 2;
-    state.maxDepth = 8;
+    state.maxDepth = 4;
     state.timeLimitEnabled = false;
     state.pruningEnabled = false;
 
-    // Game #983770: should have killed p3
+    // Game #983770: should have killed p3 (but that gives p0 enough territory to win)
     readBoard(state,
         "....1...0000000000000000000000\n"
         "....11110000000000000000000000\n"
