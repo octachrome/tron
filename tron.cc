@@ -377,6 +377,7 @@ private:
         }
         room.visited = true;
         int maxNeighbourSize = 0;
+        bool sharedNeighbour = false;
         for (int i = 0; i < room.neighbourCount; i++) {
             Room& neighbour = getNeighbour(room, i);
             if (&neighbour != &room) {
@@ -385,11 +386,14 @@ private:
                     maxNeighbourSize = size;
                 }
             }
+            if (neighbour.shared) {
+                sharedNeighbour = true;
+            }
         }
         room.visited = false;
         int size = room.size;
 #ifdef SHARED_ROOM_PENALTY
-        if (room.shared) {
+        if (sharedNeighbour) {
             size = size * SHARED_ROOM_PENALTY;
         }
 #endif
