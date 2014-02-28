@@ -14,7 +14,10 @@
 
 //#define WORST_CASE_TESTING
 #define NO_MANS_LAND
-#define SHARED_ROOM_PENALTY 9 / 10
+//#define SHARED_ROOM_PENALTY 9 / 10
+// We get this much extra space for each room which is available to us but which we don't choose to enter
+#define UNVISITED_ROOM_BONUS 1 / 10
+//#define DOOR_PENALTY 1
 
 using namespace std;
 
@@ -123,13 +126,17 @@ public:
             bool below = occupied(x, y + 1) || occupied(x + xOffset, y + 1);
             return above && below;
         }
+#ifdef TRON_TRACE
         if (yOffset) {
+#endif
             bool left = occupied(x - 1, y) || occupied(x - 1, y + yOffset);
             bool right = occupied(x + 1, y) || occupied(x + 1, y + yOffset);
             return left && right;
+#ifdef TRON_TRACE
         }
         cerr << "Illegal arguments to isDoor" << endl;
         return false;
+#endif
     }
 
     inline bool occupied(int x, int y) const {
@@ -310,11 +317,11 @@ private:
 
     inline void makeNeighbours(int fromId, int toId) {
         Room& from = room(fromId);
+#ifdef TRON_TRACE
         if (from.neighbourCount >= MAX_NEIGHBOURS) {
             cerr << "Neighbour limit reached" << endl;
             return;
         }
-#ifdef TRON_TRACE
         if (room(toId).size < 0) {
             cerr << "Making neigbour with dead room" << endl;
         }
@@ -323,10 +330,12 @@ private:
     }
 
     inline void combineRooms(int id1, int id2) {
+#ifdef TRON_TRACE
         if (id1 == id2) {
             cerr << "Room cannot be combined with itself" << endl;
             return;
         }
+#endif
         int combinedId, oldId;
         if (id1 < id2) {
             combinedId = id1;
@@ -372,22 +381,29 @@ private:
         if (room.visited) {
             return 0;
         }
+#ifdef TRON_TRACE
         if (room.size < 0) {
             cerr << "Dead room while calculating region size" << endl;
         }
+#endif
         room.visited = true;
         int maxNeighbourSize = 0;
+        int totalNeighbourSize = 0;
         bool sharedNeighbour = false;
         for (int i = 0; i < room.neighbourCount; i++) {
             Room& neighbour = getNeighbour(room, i);
             if (&neighbour != &room) {
                 int size = calculateRegionSize(neighbour);
+#ifdef DOOR_PENALTY
+                if (size > DOOR_PENALTY) size -= DOOR_PENALTY;
+#endif
                 if (size > maxNeighbourSize) {
                     maxNeighbourSize = size;
                 }
-            }
-            if (neighbour.shared) {
-                sharedNeighbour = true;
+                totalNeighbourSize += size;
+                if (neighbour.shared) {
+                    sharedNeighbour = true;
+                }
             }
         }
         room.visited = false;
@@ -396,6 +412,9 @@ private:
         if (sharedNeighbour) {
             size = size * SHARED_ROOM_PENALTY;
         }
+#endif
+#ifdef UNVISITED_ROOM_BONUS
+        size += (totalNeighbourSize - maxNeighbourSize) * UNVISITED_ROOM_BONUS;
 #endif
         return size + maxNeighbourSize;
     }
