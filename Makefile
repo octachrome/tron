@@ -6,7 +6,14 @@ run_tron_tests: tron_tests
 tron_tests: tron_tests.o gtest_main.a
 	g++ -g -o $@ $^ -lrt
 
-tron_tests.o : tron.cc
+tron_tests.o : tron.cc tron_tests.cc
+	g++ -c -o $@ -g -Wall -Wextra -fstack-protector-all -I$(GTEST_DIR)/include -DTRON_TESTS tron_tests.cc
+
+tron_bot: tron.o
+	g++ -g -o $@ $^ -lrt
+
+tron_bot.o : tron.cc
+	g++ -c -o $@ -g -Wall -Wextra -fstack-protector-all -I$(GTEST_DIR)/include -DTRON_TESTS tron.cc
 
 profile: tron_prof
 	./tron_prof
@@ -19,9 +26,6 @@ clean:
 	-rm *.o *.a *_tests prof
 
 GTEST_DIR = /home/chris/code/gtest-1.6.0
-
-CXXFLAGS += -g -Wall -Wextra -fstack-protector-all
-CPPFLAGS += -I$(GTEST_DIR)/include -DTRON_TESTS
 
 
 # Builds gtest.a and gtest_main.a.
