@@ -17,9 +17,9 @@
 // Each room which has a neighbour shared with an enemy has its space reduced by this ratio
 #define SHARED_ROOM_PENALTY 9 / 10
 // We get this much extra space for each room which is available to us but which we don't choose to enter
-#define UNVISITED_ROOM_BONUS 1 / 20
+// #define UNVISITED_ROOM_BONUS 1 / 10
 // Each door we pass through reduces our score by this much
-#define DOOR_PENALTY 1
+// #define DOOR_PENALTY 1
 
 using namespace std;
 
@@ -411,7 +411,7 @@ private:
             }
         }
         room.visited = false;
-        // Double the room size, so we can apply 'half cell' bonuses/penalties
+        // Multiply the room size, so we can apply 'half cell' bonuses/penalties
         int size = room.size * 2;
 #ifdef SHARED_ROOM_PENALTY
         if (sharedNeighbour) {
